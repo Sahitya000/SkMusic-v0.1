@@ -1,35 +1,113 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8">
   <title>SK Music</title>
-  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: #0f0f1b;
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 10px;
+    }
+    input, button {
+      padding: 8px;
+      margin: 5px;
+      border-radius: 8px;
+      border: none;
+    }
+    .tabs button {
+      background: #222;
+      color: #fff;
+      margin: 4px;
+      border: 1px solid #444;
+      cursor: pointer;
+    }
+    .result {
+      margin-top: 20px;
+    }
+    .thumbnail {
+      width: 100%;
+      max-width: 320px;
+      border-radius: 12px;
+    }
+    .title {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    iframe {
+      margin-top: 10px;
+      border-radius: 12px;
+    }
+    #scrollNote {
+      margin-top: 20px;
+      color: orange;
+    }
+  </style>
 </head>
 <body>
-  <div class="container">
-    <h1>🎵 SK Music</h1>
 
-    <!-- Search Bar -->
-    <input type="text" id="search" placeholder="Search song..." />
+  <h1>🎵 SK Music</h1>
 
-    <!-- Song Category Tabs -->
-    <div class="tabs">
-      <button onclick="filterSongs('bollywood')">Bollywood</button>
-      <button onclick="filterSongs('bhojpuri')">Bhojpuri</button>
-      <button onclick="filterSongs('marathi')">Marathi</button>
-      <button onclick="filterSongs('all')">All</button>
-    </div>
+  <input type="text" id="searchInput" placeholder="Search song..." />
+  <button onclick="search()">Search</button>
 
-    <!-- Player Card -->
-    <div id="player-card">
-      <img id="thumbnail" src="" alt="Thumbnail">
-      <h2 id="song-title">Song Title</h2>
-      <p id="song-artist">Artist</p>
-      <audio id="audio" controls autoplay></audio>
-    </div>
-
-    <p class="hint">🔼 Scroll up to play next song</p>
+  <div class="tabs">
+    <button onclick="tabSearch('Bollywood')">Bollywood</button>
+    <button onclick="tabSearch('Bhojpuri')">Bhojpuri</button>
+    <button onclick="tabSearch('Marathi')">Marathi</button>
+    <button onclick="tabSearch('')">All</button>
   </div>
-  <script src="script.js"></script>
+
+  <div class="result" id="result"></div>
+
+  <div id="scrollNote">⚠️ Scroll up to play next song</div>
+
+  <script>
+    const apiKey = "AIzaSyAz3LnhWy_Ciz6I74NvUVfb3J4XSj8Jw_M"; // Replace with your key
+
+    function search(query = '') {
+      const userQuery = query || document.getElementById("searchInput").value;
+      const encodedQuery = encodeURIComponent(userQuery);
+      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q=${encodedQuery}&key=${apiKey}`;
+
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          const video = data.items[0];
+          const title = video.snippet.title;
+          const thumbnail = video.snippet.thumbnails.high.url;
+          const videoId = video.id.videoId;
+
+          document.getElementById("result").innerHTML = `
+            <img src="${thumbnail}" class="thumbnail" />
+            <div class="title">${title}</div>
+            <iframe width="320" height="180" src="https://www.youtube.com/embed/${videoId}?autoplay=1" allow="autoplay" frameborder="0" allowfullscreen></iframe>
+          `;
+        });
+    }
+
+    function tabSearch(genre) {
+      document.getElementById("searchInput").value = genre;
+      search(genre);
+    }
+
+    // Optional: Simulate scroll to next song
+    let scrollCount = 0;
+    window.onscroll = () => {
+      if (window.scrollY < 5) {
+        scrollCount++;
+        if (scrollCount % 2 === 0) {
+          search();
+        }
+      }
+    };
+  </script>
+
 </body>
 </html>
