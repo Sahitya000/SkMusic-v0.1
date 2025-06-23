@@ -1,113 +1,675 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>SK Music</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Resso Clone</title>
   <style>
-    body {
-      background: #0f0f1b;
-      color: white;
-      font-family: 'Segoe UI', sans-serif;
-      text-align: center;
+    :root {
+      --primary: #1ed760;
+      --secondary: #535353;
+      --dark: #121212;
+      --light-dark: #212121;
+      --text: #ffffff;
+      --text-secondary: #b3b3b3;
+    }
+    
+    * {
       margin: 0;
-      padding: 20px;
+      padding: 0;
+      box-sizing: border-box;
     }
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 10px;
+    
+    body {
+      margin: 0;
+      background: var(--dark);
+      font-family: 'Segoe UI', sans-serif;
+      color: var(--text);
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      height: 100vh;
     }
-    input, button {
-      padding: 8px;
-      margin: 5px;
-      border-radius: 8px;
-      border: none;
+    
+    /* Header/Navbar */
+    .header {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.8), transparent);
+      z-index: 100;
     }
-    .tabs button {
-      background: #222;
-      color: #fff;
-      margin: 4px;
-      border: 1px solid #444;
+    
+    .logo {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--primary);
+    }
+    
+    .search-icon, .user-icon {
+      font-size: 20px;
+      color: var(--text);
       cursor: pointer;
     }
-    .result {
-      margin-top: 20px;
-    }
-    .thumbnail {
+    
+    /* Search Modal */
+    .search-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
       width: 100%;
-      max-width: 320px;
-      border-radius: 12px;
+      height: 100%;
+      background: var(--dark);
+      z-index: 200;
+      padding: 70px 20px 20px;
+      display: none;
     }
-    .title {
-      margin-top: 10px;
+    
+    .search-container {
+      width: 100%;
+    }
+    
+    .search-input {
+      width: 100%;
+      padding: 15px;
+      font-size: 16px;
+      border-radius: 25px;
+      border: none;
+      background: var(--light-dark);
+      color: var(--text);
+      margin-bottom: 20px;
+    }
+    
+    .close-search {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 24px;
+      color: var(--text);
+      cursor: pointer;
+    }
+    
+    /* Main Content */
+    .container {
+      padding-top: 60px;
+    }
+    
+    /* Song Cards */
+    .song {
+      height: 100vh;
+      scroll-snap-align: start;
+      position: relative;
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px;
+    }
+    
+    .overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.4));
+      z-index: 1;
+    }
+    
+    .song-info {
+      position: relative;
+      z-index: 2;
+      margin-bottom: 30px;
+    }
+    
+    .song-title {
+      font-size: 24px;
       font-weight: bold;
+      margin-bottom: 10px;
     }
-    iframe {
-      margin-top: 10px;
+    
+    .song-artist {
+      font-size: 16px;
+      color: var(--text-secondary);
+    }
+    
+    /* Lyrics Section */
+    .lyrics-container {
+      position: relative;
+      z-index: 2;
+      height: 40%;
+      overflow-y: auto;
+      padding: 15px;
+      background: rgba(0,0,0,0.3);
       border-radius: 12px;
+      margin-bottom: 20px;
     }
-    #scrollNote {
-      margin-top: 20px;
-      color: orange;
+    
+    .lyrics {
+      font-size: 18px;
+      line-height: 1.6;
+      text-align: center;
+      color: var(--text);
+    }
+    
+    .lyrics-line {
+      margin-bottom: 15px;
+      opacity: 0.6;
+      transition: all 0.3s ease;
+    }
+    
+    .lyrics-line.active {
+      opacity: 1;
+      font-size: 20px;
+      color: var(--primary);
+    }
+    
+    /* Player Controls */
+    .player-controls {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    
+    .progress-container {
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: var(--secondary);
+      border-radius: 2px;
+      margin-bottom: 5px;
+      overflow: hidden;
+    }
+    
+    .progress {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+    }
+    
+    .time {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 0 20px;
+    }
+    
+    .control-btn {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 20px;
+      cursor: pointer;
+    }
+    
+    .play-btn {
+      background: var(--primary);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-around;
+      padding: 15px 0;
+      background: var(--light-dark);
+      z-index: 100;
+    }
+    
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    
+    .nav-item.active {
+      color: var(--primary);
+    }
+    
+    .nav-icon {
+      font-size: 20px;
+      margin-bottom: 5px;
+    }
+    
+    /* Floating Action Buttons */
+    .fab {
+      position: fixed;
+      right: 20px;
+      bottom: 80px;
+      background: var(--primary);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 20px;
+      color: white;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      z-index: 101;
+      cursor: pointer;
+    }
+    
+    /* Comments Section */
+    .comments-btn {
+      position: fixed;
+      left: 20px;
+      bottom: 80px;
+      background: rgba(255,255,255,0.1);
+      padding: 10px 15px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+      z-index: 101;
+      cursor: pointer;
+    }
+    
+    .comments-icon {
+      margin-right: 5px;
+    }
+    
+    /* Loading Spinner */
+    .loader {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 5px solid var(--secondary);
+      border-top: 5px solid var(--primary);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      z-index: 1000;
+    }
+    
+    @keyframes spin {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
     }
   </style>
 </head>
 <body>
 
-  <h1>🎵 SK Music</h1>
-
-  <input type="text" id="searchInput" placeholder="Search song..." />
-  <button onclick="search()">Search</button>
-
-  <div class="tabs">
-    <button onclick="tabSearch('Bollywood')">Bollywood</button>
-    <button onclick="tabSearch('Bhojpuri')">Bhojpuri</button>
-    <button onclick="tabSearch('Marathi')">Marathi</button>
-    <button onclick="tabSearch('')">All</button>
+  <div class="header">
+    <div class="logo">Resso</div>
+    <div class="search-icon" onclick="openSearch()">🔍</div>
+    <div class="user-icon">👤</div>
   </div>
 
-  <div class="result" id="result"></div>
+  <div class="search-modal" id="searchModal">
+    <div class="close-search" onclick="closeSearch()">✕</div>
+    <div class="search-container">
+      <input type="text" class="search-input" id="searchInput" placeholder="Search for songs, artists..." onkeypress="handleSearchKeyPress(event)">
+    </div>
+    <div id="searchResults"></div>
+  </div>
 
-  <div id="scrollNote">⚠️ Scroll up to play next song</div>
+  <div class="loader" id="loader"></div>
+
+  <div class="container" id="results">
+    <!-- Default content will be replaced by search results -->
+    <div class="song" style="background-image: url('https://i.ytimg.com/vi/JGwWNGJdvx8/maxresdefault.jpg')">
+      <div class="overlay"></div>
+      
+      <div class="song-info">
+        <h1 class="song-title">Welcome to Resso</h1>
+        <p class="song-artist">Search for music to begin</p>
+      </div>
+      
+      <div class="lyrics-container">
+        <div class="lyrics">
+          <div class="lyrics-line">Search for your favorite songs</div>
+          <div class="lyrics-line">See synchronized lyrics</div>
+          <div class="lyrics-line active">Enjoy the music experience</div>
+        </div>
+      </div>
+      
+      <div class="player-controls">
+        <div class="progress-container">
+          <div class="progress-bar">
+            <div class="progress"></div>
+          </div>
+          <div class="time">
+            <span>0:00</span>
+            <span>0:00</span>
+          </div>
+        </div>
+        
+        <div class="controls">
+          <button class="control-btn">🔀</button>
+          <button class="control-btn">⏮</button>
+          <button class="play-btn">▶</button>
+          <button class="control-btn">⏭</button>
+          <button class="control-btn">🔁</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="fab">+</div>
+  <div class="comments-btn">
+    <span class="comments-icon">💬</span>
+    <span>Comments</span>
+  </div>
+  
+  <div class="bottom-nav">
+    <div class="nav-item active" onclick="switchTab('home')">
+      <div class="nav-icon">🏠</div>
+      <div>Home</div>
+    </div>
+    <div class="nav-item" onclick="switchTab('search')">
+      <div class="nav-icon">🔍</div>
+      <div>Search</div>
+    </div>
+    <div class="nav-item" onclick="switchTab('library')">
+      <div class="nav-icon">📻</div>
+      <div>Library</div>
+    </div>
+    <div class="nav-item" onclick="switchTab('settings')">
+      <div class="nav-icon">⚙️</div>
+      <div>Settings</div>
+    </div>
+  </div>
 
   <script>
-    const apiKey = "AIzaSyAz3LnhWy_Ciz6I74NvUVfb3J4XSj8Jw_M"; // Replace with your key
-
-    function search(query = '') {
-      const userQuery = query || document.getElementById("searchInput").value;
-      const encodedQuery = encodeURIComponent(userQuery);
-      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=1&q=${encodedQuery}&key=${apiKey}`;
-
-      fetch(url)
-        .then(res => res.json())
-        .then(data => {
-          const video = data.items[0];
-          const title = video.snippet.title;
-          const thumbnail = video.snippet.thumbnails.high.url;
-          const videoId = video.id.videoId;
-
-          document.getElementById("result").innerHTML = `
-            <img src="${thumbnail}" class="thumbnail" />
-            <div class="title">${title}</div>
-            <iframe width="320" height="180" src="https://www.youtube.com/embed/${videoId}?autoplay=1" allow="autoplay" frameborder="0" allowfullscreen></iframe>
-          `;
-        });
+    // Replace with your actual YouTube API key
+    const API_KEY = 'AIzaSyAz3LnhWy_Ciz6I74NvUVfb3J4XSj8Jw_M';
+    let currentVideoId = '';
+    let player;
+    let currentTime = 0;
+    let duration = 0;
+    let progressInterval;
+    
+    // DOM Elements
+    const searchModal = document.getElementById('searchModal');
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    const resultsContainer = document.getElementById('results');
+    const loader = document.getElementById('loader');
+    
+    // Tab management
+    function switchTab(tab) {
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      event.currentTarget.classList.add('active');
+      
+      // In a real app, you would load different content for each tab
+      console.log(`Switched to ${tab} tab`);
     }
-
-    function tabSearch(genre) {
-      document.getElementById("searchInput").value = genre;
-      search(genre);
+    
+    // Search modal functions
+    function openSearch() {
+      searchModal.style.display = 'block';
+      searchInput.focus();
     }
-
-    // Optional: Simulate scroll to next song
-    let scrollCount = 0;
-    window.onscroll = () => {
-      if (window.scrollY < 5) {
-        scrollCount++;
-        if (scrollCount % 2 === 0) {
-          search();
+    
+    function closeSearch() {
+      searchModal.style.display = 'none';
+    }
+    
+    function handleSearchKeyPress(e) {
+      if (e.key === 'Enter') {
+        const query = searchInput.value.trim();
+        if (query) {
+          searchYouTube(query);
         }
       }
-    };
+    }
+    
+    // YouTube API integration
+    function searchYouTube(query) {
+      showLoader();
+      
+      // Clear previous results
+      searchResults.innerHTML = '';
+      
+      // Make API request
+      fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query + ' music')}&type=video&key=${API_KEY}`)
+        .then(response => response.json())
+        .then(data => {
+          hideLoader();
+          displaySearchResults(data.items);
+        })
+        .catch(error => {
+          hideLoader();
+          console.error('Error fetching data:', error);
+          searchResults.innerHTML = '<p style="color: white; text-align: center;">Error loading results. Please try again.</p>';
+        });
+    }
+    
+    function displaySearchResults(items) {
+      searchResults.innerHTML = '';
+      
+      if (items.length === 0) {
+        searchResults.innerHTML = '<p style="color: white; text-align: center;">No results found.</p>';
+        return;
+      }
+      
+      items.forEach(item => {
+        const videoId = item.id.videoId;
+        const title = item.snippet.title;
+        const channel = item.snippet.channelTitle;
+        const thumbnail = item.snippet.thumbnails.medium.url;
+        
+        const resultItem = document.createElement('div');
+        resultItem.style.display = 'flex';
+        resultItem.style.padding = '10px';
+        resultItem.style.marginBottom = '10px';
+        resultItem.style.backgroundColor = 'rgba(255,255,255,0.1)';
+        resultItem.style.borderRadius = '8px';
+        resultItem.style.cursor = 'pointer';
+        resultItem.style.alignItems = 'center';
+        resultItem.onclick = () => playVideo(videoId, title, channel, thumbnail);
+        
+        resultItem.innerHTML = `
+          <img src="${thumbnail}" style="width: 80px; height: 60px; border-radius: 4px; margin-right: 10px;">
+          <div>
+            <div style="font-weight: bold; margin-bottom: 5px;">${title}</div>
+            <div style="font-size: 12px; color: var(--text-secondary);">${channel}</div>
+          </div>
+        `;
+        
+        searchResults.appendChild(resultItem);
+      });
+    }
+    
+    function playVideo(videoId, title, artist, thumbnail) {
+      currentVideoId = videoId;
+      
+      // Update the UI
+      resultsContainer.innerHTML = '';
+      
+      const songDiv = document.createElement('div');
+      songDiv.className = 'song';
+      songDiv.style.backgroundImage = `url(${thumbnail})`;
+      
+      songDiv.innerHTML = `
+        <div class="overlay"></div>
+        
+        <div class="song-info">
+          <h1 class="song-title">${title}</h1>
+          <p class="song-artist">${artist}</p>
+        </div>
+        
+        <div class="lyrics-container">
+          <div class="lyrics">
+            <div class="lyrics-line">Loading lyrics...</div>
+            <div class="lyrics-line">Please wait</div>
+          </div>
+        </div>
+        
+        <div class="player-controls">
+          <div class="progress-container">
+            <div class="progress-bar">
+              <div class="progress" id="progressBar"></div>
+            </div>
+            <div class="time" id="timeDisplay">
+              <span>0:00</span>
+              <span>0:00</span>
+            </div>
+          </div>
+          
+          <div class="controls">
+            <button class="control-btn">🔀</button>
+            <button class="control-btn">⏮</button>
+            <button class="play-btn" id="playBtn">▶</button>
+            <button class="control-btn">⏭</button>
+            <button class="control-btn">🔁</button>
+          </div>
+        </div>
+        
+        <iframe id="player" width="0" height="0" src="https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+      `;
+      
+      resultsContainer.appendChild(songDiv);
+      closeSearch();
+      
+      // Initialize YouTube player
+      loadYouTubePlayer();
+    }
+    
+    function loadYouTubePlayer() {
+      // This function would be called when the YouTube iframe API is ready
+      // For simplicity, we're just simulating playback controls
+      
+      const playBtn = document.getElementById('playBtn');
+      const progressBar = document.getElementById('progressBar');
+      const timeDisplay = document.getElementById('timeDisplay');
+      
+      // Simulate playback
+      let isPlaying = true;
+      let currentTime = 0;
+      duration = 180; // Assume 3 minutes for demo
+      
+      // Update time display
+      timeDisplay.innerHTML = `
+        <span>${formatTime(currentTime)}</span>
+        <span>${formatTime(duration)}</span>
+      `;
+      
+      // Toggle play/pause
+      playBtn.addEventListener('click', () => {
+        isPlaying = !isPlaying;
+        playBtn.textContent = isPlaying ? '❚❚' : '▶';
+      });
+      
+      // Update progress bar
+      progressInterval = setInterval(() => {
+        if (isPlaying && currentTime < duration) {
+          currentTime += 1;
+          const progressPercent = (currentTime / duration) * 100;
+          progressBar.style.width = `${progressPercent}%`;
+          
+          timeDisplay.innerHTML = `
+            <span>${formatTime(currentTime)}</span>
+            <span>${formatTime(duration)}</span>
+          `;
+        }
+      }, 1000);
+      
+      // Simulate lyrics highlighting
+      const lyricsContainer = document.querySelector('.lyrics-container .lyrics');
+      if (lyricsContainer) {
+        lyricsContainer.innerHTML = `
+          <div class="lyrics-line">This is a demo of Resso-style player</div>
+          <div class="lyrics-line">Actual lyrics would come from</div>
+          <div class="lyrics-line">a lyrics API service</div>
+          <div class="lyrics-line">For this demo, we're showing</div>
+          <div class="lyrics-line active">placeholder lyrics</div>
+          <div class="lyrics-line">YouTube API is integrated</div>
+          <div class="lyrics-line">for music playback</div>
+        `;
+        
+        setInterval(() => {
+          const lines = document.querySelectorAll('.lyrics-line');
+          lines.forEach(line => line.classList.remove('active'));
+          
+          const activeLines = document.querySelectorAll('.lyrics-line');
+          const nextIndex = Math.floor(Math.random() * activeLines.length);
+          activeLines[nextIndex].classList.add('active');
+        }, 3000);
+      }
+    }
+    
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+    
+    function showLoader() {
+      loader.style.display = 'block';
+    }
+    
+    function hideLoader() {
+      loader.style.display = 'none';
+    }
+    
+    // Initialize with some default content or search
+    // For demo purposes, we could automatically search for something
+    // searchYouTube('popular songs');
   </script>
 
+  <!-- Load YouTube IFrame API -->
+  <script>
+    // This would be used for more advanced player control
+    // For this demo, we're simulating the player functionality
+    /*
+    var tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    var firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player', {
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    }
+    
+    function onPlayerReady(event) {
+      // Player is ready
+    }
+    
+    function onPlayerStateChange(event) {
+      // Handle player state changes
+    }
+    */
+  </script>
 </body>
 </html>
