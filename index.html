@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Resso Clone</title>
+  <title>Resso Clone - Full Functional</title>
   <style>
     :root {
       --primary: #1ed760;
@@ -28,6 +28,7 @@
       overflow-y: scroll;
       scroll-snap-type: y mandatory;
       height: 100vh;
+      touch-action: pan-y;
     }
     
     /* Header/Navbar */
@@ -66,10 +67,15 @@
       z-index: 200;
       padding: 70px 20px 20px;
       display: none;
+      overflow-y: auto;
     }
     
     .search-container {
       width: 100%;
+      position: sticky;
+      top: 0;
+      background: var(--dark);
+      padding-bottom: 10px;
     }
     
     .search-input {
@@ -80,7 +86,7 @@
       border: none;
       background: var(--light-dark);
       color: var(--text);
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
     
     .close-search {
@@ -127,6 +133,9 @@
       font-size: 24px;
       font-weight: bold;
       margin-bottom: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     
     .song-artist {
@@ -144,6 +153,11 @@
       background: rgba(0,0,0,0.3);
       border-radius: 12px;
       margin-bottom: 20px;
+      scrollbar-width: none; /* Firefox */
+    }
+    
+    .lyrics-container::-webkit-scrollbar {
+      display: none; /* Chrome/Safari */
     }
     
     .lyrics {
@@ -163,6 +177,7 @@
       opacity: 1;
       font-size: 20px;
       color: var(--primary);
+      font-weight: bold;
     }
     
     /* Player Controls */
@@ -172,6 +187,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
+      width: 100%;
     }
     
     .progress-container {
@@ -186,12 +202,32 @@
       border-radius: 2px;
       margin-bottom: 5px;
       overflow: hidden;
+      position: relative;
+      cursor: pointer;
     }
     
     .progress {
       height: 100%;
       background: var(--primary);
       width: 0%;
+      position: relative;
+    }
+    
+    .progress-handle {
+      position: absolute;
+      right: -6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 12px;
+      background: var(--primary);
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    
+    .progress-bar:hover .progress-handle {
+      opacity: 1;
     }
     
     .time {
@@ -216,6 +252,7 @@
       color: var(--text);
       font-size: 20px;
       cursor: pointer;
+      padding: 10px;
     }
     
     .play-btn {
@@ -228,6 +265,8 @@
       align-items: center;
       font-size: 24px;
       cursor: pointer;
+      border: none;
+      color: black;
     }
     
     /* Bottom Navigation */
@@ -318,12 +357,20 @@
       0% { transform: translate(-50%, -50%) rotate(0deg); }
       100% { transform: translate(-50%, -50%) rotate(360deg); }
     }
+    
+    /* Hidden YouTube Player */
+    #youtube-player {
+      position: absolute;
+      width: 0;
+      height: 0;
+      opacity: 0;
+    }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <div class="logo">Resso</div>
+    <div class="logo">SkMusic</div>
     <div class="search-icon" onclick="openSearch()">🔍</div>
     <div class="user-icon">👤</div>
   </div>
@@ -403,21 +450,102 @@
     </div>
   </div>
 
+  <!-- YouTube IFrame Player -->
+  <div id="youtube-player"></div>
+
   <script>
     // Replace with your actual YouTube API key
     const API_KEY = 'AIzaSyAz3LnhWy_Ciz6I74NvUVfb3J4XSj8Jw_M';
-    let currentVideoId = '';
     let player;
-    let currentTime = 0;
-    let duration = 0;
+    let currentVideoId = '';
+    let currentVideoIndex = 0;
+    let searchResults = [];
+    let lyrics = [];
+    let currentLyricIndex = 0;
+    let isPlaying = false;
     let progressInterval;
+    let touchStartY = 0;
     
     // DOM Elements
     const searchModal = document.getElementById('searchModal');
     const searchInput = document.getElementById('searchInput');
-    const searchResults = document.getElementById('searchResults');
+    const searchResultsDiv = document.getElementById('searchResults');
     const resultsContainer = document.getElementById('results');
     const loader = document.getElementById('loader');
+    
+    // Initialize the app when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      // Load YouTube IFrame API
+      loadYouTubeAPI();
+      
+      // Set up touch events for swipe navigation
+      document.addEventListener('touchstart', handleTouchStart, false);
+      document.addEventListener('touchend', handleTouchEnd, false);
+      
+      // For demo purposes, search for popular music initially
+      // searchYouTube('popular songs 2023');
+    });
+    
+    // Load YouTube IFrame API
+    function loadYouTubeAPI() {
+      const tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    }
+    
+    // YouTube API ready callback
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('youtube-player', {
+        height: '0',
+        width: '0',
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    }
+    
+    function onPlayerReady(event) {
+      console.log('YouTube player ready');
+    }
+    
+    function onPlayerStateChange(event) {
+      const timeDisplay = document.querySelector('.time');
+      const progressBar = document.querySelector('.progress');
+      const playBtn = document.querySelector('.play-btn');
+      
+      switch(event.data) {
+        case YT.PlayerState.PLAYING:
+          isPlaying = true;
+          playBtn.textContent = '❚❚';
+          startProgressTracking();
+          startLyricsTracking();
+          break;
+          
+        case YT.PlayerState.PAUSED:
+          isPlaying = false;
+          playBtn.textContent = '▶';
+          clearInterval(progressInterval);
+          break;
+          
+        case YT.PlayerState.ENDED:
+          isPlaying = false;
+          playBtn.textContent = '▶';
+          clearInterval(progressInterval);
+          playNextVideo();
+          break;
+      }
+      
+      // Update duration display
+      if (event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.PAUSED) {
+        const duration = player.getDuration();
+        timeDisplay.innerHTML = `
+          <span>${formatTime(player.getCurrentTime())}</span>
+          <span>${formatTime(duration)}</span>
+        `;
+      }
+    }
     
     // Tab management
     function switchTab(tab) {
@@ -449,40 +577,42 @@
       }
     }
     
-    // YouTube API integration
+    // YouTube Search API
     function searchYouTube(query) {
       showLoader();
       
       // Clear previous results
-      searchResults.innerHTML = '';
+      searchResultsDiv.innerHTML = '';
+      searchResults = [];
       
       // Make API request
       fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query + ' music')}&type=video&key=${API_KEY}`)
         .then(response => response.json())
         .then(data => {
           hideLoader();
+          searchResults = data.items;
           displaySearchResults(data.items);
         })
         .catch(error => {
           hideLoader();
           console.error('Error fetching data:', error);
-          searchResults.innerHTML = '<p style="color: white; text-align: center;">Error loading results. Please try again.</p>';
+          searchResultsDiv.innerHTML = '<p style="color: white; text-align: center; padding: 20px;">Error loading results. Please try again.</p>';
         });
     }
     
     function displaySearchResults(items) {
-      searchResults.innerHTML = '';
+      searchResultsDiv.innerHTML = '';
       
       if (items.length === 0) {
-        searchResults.innerHTML = '<p style="color: white; text-align: center;">No results found.</p>';
+        searchResultsDiv.innerHTML = '<p style="color: white; text-align: center; padding: 20px;">No results found.</p>';
         return;
       }
       
-      items.forEach(item => {
+      items.forEach((item, index) => {
         const videoId = item.id.videoId;
         const title = item.snippet.title;
         const channel = item.snippet.channelTitle;
-        const thumbnail = item.snippet.thumbnails.medium.url;
+        const thumbnail = item.snippet.thumbnails.medium ? item.snippet.thumbnails.medium.url : item.snippet.thumbnails.default.url;
         
         const resultItem = document.createElement('div');
         resultItem.style.display = 'flex';
@@ -492,20 +622,24 @@
         resultItem.style.borderRadius = '8px';
         resultItem.style.cursor = 'pointer';
         resultItem.style.alignItems = 'center';
-        resultItem.onclick = () => playVideo(videoId, title, channel, thumbnail);
+        resultItem.onclick = () => {
+          currentVideoIndex = index;
+          playVideo(videoId, title, channel, thumbnail);
+        };
         
         resultItem.innerHTML = `
           <img src="${thumbnail}" style="width: 80px; height: 60px; border-radius: 4px; margin-right: 10px;">
-          <div>
-            <div style="font-weight: bold; margin-bottom: 5px;">${title}</div>
+          <div style="flex: 1; min-width: 0;">
+            <div style="font-weight: bold; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${title}</div>
             <div style="font-size: 12px; color: var(--text-secondary);">${channel}</div>
           </div>
         `;
         
-        searchResults.appendChild(resultItem);
+        searchResultsDiv.appendChild(resultItem);
       });
     }
     
+    // Video playback functions
     function playVideo(videoId, title, artist, thumbnail) {
       currentVideoId = videoId;
       
@@ -525,16 +659,16 @@
         </div>
         
         <div class="lyrics-container">
-          <div class="lyrics">
+          <div class="lyrics" id="lyricsDisplay">
             <div class="lyrics-line">Loading lyrics...</div>
-            <div class="lyrics-line">Please wait</div>
           </div>
         </div>
         
         <div class="player-controls">
           <div class="progress-container">
-            <div class="progress-bar">
+            <div class="progress-bar" id="progressBarContainer">
               <div class="progress" id="progressBar"></div>
+              <div class="progress-handle"></div>
             </div>
             <div class="time" id="timeDisplay">
               <span>0:00</span>
@@ -543,133 +677,66 @@
           </div>
           
           <div class="controls">
-            <button class="control-btn">🔀</button>
-            <button class="control-btn">⏮</button>
-            <button class="play-btn" id="playBtn">▶</button>
-            <button class="control-btn">⏭</button>
-            <button class="control-btn">🔁</button>
+            <button class="control-btn" onclick="toggleShuffle()">🔀</button>
+            <button class="control-btn" onclick="playPreviousVideo()">⏮</button>
+            <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
+            <button class="control-btn" onclick="playNextVideo()">⏭</button>
+            <button class="control-btn" onclick="toggleRepeat()">🔁</button>
           </div>
         </div>
-        
-        <iframe id="player" width="0" height="0" src="https://www.youtube.com/embed/${videoId}?enablejsapi=1&autoplay=1" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
       `;
       
       resultsContainer.appendChild(songDiv);
       closeSearch();
       
-      // Initialize YouTube player
-      loadYouTubePlayer();
-    }
-    
-    function loadYouTubePlayer() {
-      // This function would be called when the YouTube iframe API is ready
-      // For simplicity, we're just simulating playback controls
-      
-      const playBtn = document.getElementById('playBtn');
-      const progressBar = document.getElementById('progressBar');
-      const timeDisplay = document.getElementById('timeDisplay');
-      
-      // Simulate playback
-      let isPlaying = true;
-      let currentTime = 0;
-      duration = 180; // Assume 3 minutes for demo
-      
-      // Update time display
-      timeDisplay.innerHTML = `
-        <span>${formatTime(currentTime)}</span>
-        <span>${formatTime(duration)}</span>
-      `;
-      
-      // Toggle play/pause
-      playBtn.addEventListener('click', () => {
-        isPlaying = !isPlaying;
-        playBtn.textContent = isPlaying ? '❚❚' : '▶';
-      });
-      
-      // Update progress bar
-      progressInterval = setInterval(() => {
-        if (isPlaying && currentTime < duration) {
-          currentTime += 1;
-          const progressPercent = (currentTime / duration) * 100;
-          progressBar.style.width = `${progressPercent}%`;
-          
-          timeDisplay.innerHTML = `
-            <span>${formatTime(currentTime)}</span>
-            <span>${formatTime(duration)}</span>
-          `;
-        }
-      }, 1000);
-      
-      // Simulate lyrics highlighting
-      const lyricsContainer = document.querySelector('.lyrics-container .lyrics');
-      if (lyricsContainer) {
-        lyricsContainer.innerHTML = `
-          <div class="lyrics-line">This is a demo of Resso-style player</div>
-          <div class="lyrics-line">Actual lyrics would come from</div>
-          <div class="lyrics-line">a lyrics API service</div>
-          <div class="lyrics-line">For this demo, we're showing</div>
-          <div class="lyrics-line active">placeholder lyrics</div>
-          <div class="lyrics-line">YouTube API is integrated</div>
-          <div class="lyrics-line">for music playback</div>
-        `;
-        
-        setInterval(() => {
-          const lines = document.querySelectorAll('.lyrics-line');
-          lines.forEach(line => line.classList.remove('active'));
-          
-          const activeLines = document.querySelectorAll('.lyrics-line');
-          const nextIndex = Math.floor(Math.random() * activeLines.length);
-          activeLines[nextIndex].classList.add('active');
-        }, 3000);
+      // Load and play the video
+      if (player) {
+        player.loadVideoById(videoId);
+        player.playVideo();
       }
+      
+      // Fetch lyrics (simulated - in a real app you'd use a lyrics API)
+      fetchLyrics(title, artist);
     }
     
-    function formatTime(seconds) {
-      const mins = Math.floor(seconds / 60);
-      const secs = Math.floor(seconds % 60);
-      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    // Simulated lyrics fetching
+    function fetchLyrics(title, artist) {
+      // In a real app, you would call a lyrics API here
+      console.log(`Fetching lyrics for ${title} by ${artist}`);
+      
+      // Simulate API delay
+      setTimeout(() => {
+        // Mock lyrics data
+        lyrics = generateMockLyrics();
+        currentLyricIndex = 0;
+        
+        const lyricsDisplay = document.getElementById('lyricsDisplay');
+        lyricsDisplay.innerHTML = '';
+        
+        lyrics.forEach((line, index) => {
+          const lineDiv = document.createElement('div');
+          lineDiv.className = 'lyrics-line';
+          lineDiv.textContent = line.text;
+          if (index === 0) lineDiv.classList.add('active');
+          lyricsDisplay.appendChild(lineDiv);
+        });
+      }, 1000);
     }
     
-    function showLoader() {
-      loader.style.display = 'block';
-    }
-    
-    function hideLoader() {
-      loader.style.display = 'none';
-    }
-    
-    // Initialize with some default content or search
-    // For demo purposes, we could automatically search for something
-    // searchYouTube('popular songs');
-  </script>
-
-  <!-- Load YouTube IFrame API -->
-  <script>
-    // This would be used for more advanced player control
-    // For this demo, we're simulating the player functionality
-    /*
-    var tag = document.createElement('script');
-    tag.src = "https://www.youtube.com/iframe_api";
-    var firstScriptTag = document.getElementsByTagName('script')[0];
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-    
-    function onYouTubeIframeAPIReady() {
-      player = new YT.Player('player', {
-        events: {
-          'onReady': onPlayerReady,
-          'onStateChange': onPlayerStateChange
-        }
-      });
-    }
-    
-    function onPlayerReady(event) {
-      // Player is ready
-    }
-    
-    function onPlayerStateChange(event) {
-      // Handle player state changes
-    }
-    */
-  </script>
-</body>
-</html>
+    function generateMockLyrics() {
+      // Generate mock lyrics with timestamps
+      const lines = [
+        "This is the first line of the song",
+        "This line comes a bit later",
+        "The chorus starts here",
+        "Sing it loud, sing it proud",
+        "Back to the verse now",
+        "The story continues",
+        "Building up to the climax",
+        "The most powerful part",
+        "Coming down slowly",
+        "Final words of the song"
+      ];
+      
+      return lines.map((text, i) => ({
+        text: t
