@@ -8,13 +8,28 @@
 <body>
   <div class="container">
     <h1>🎵 SK Music</h1>
-    <p>Scroll up to play next song</p>
-    <div id="player-container">
-      <iframe id="player" width="100%" height="360" src="" frameborder="0" allowfullscreen></iframe>
-    </div>
-    <p id="song-title">Now Playing: </p>
-  </div>
 
+    <!-- Search Bar -->
+    <input type="text" id="search" placeholder="Search song..." />
+
+    <!-- Song Category Tabs -->
+    <div class="tabs">
+      <button onclick="filterSongs('bollywood')">Bollywood</button>
+      <button onclick="filterSongs('bhojpuri')">Bhojpuri</button>
+      <button onclick="filterSongs('marathi')">Marathi</button>
+      <button onclick="filterSongs('all')">All</button>
+    </div>
+
+    <!-- Player Card -->
+    <div id="player-card">
+      <img id="thumbnail" src="" alt="Thumbnail">
+      <h2 id="song-title">Song Title</h2>
+      <p id="song-artist">Artist</p>
+      <audio id="audio" controls autoplay></audio>
+    </div>
+
+    <p class="hint">🔼 Scroll up to play next song</p>
+  </div>
   <script src="script.js"></script>
 </body>
 </html>
