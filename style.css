@@ -1,8 +1,8 @@
 body {
   margin: 0;
   font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(to right, #1e1e2f, #111122);
-  color: white;
+  background: linear-gradient(to bottom right, #111, #1f1f2f);
+  color: #fff;
   text-align: center;
   overflow: hidden;
 }
@@ -11,19 +11,78 @@ body {
   padding: 20px;
 }
 
-#player-container {
-  margin: 20px auto;
-  max-width: 600px;
-  border-radius: 20px;
-  overflow: hidden;
-  box-shadow: 0 0 20px #00f2ff66;
-}
-
 h1 {
   font-size: 2.5em;
-  margin-bottom: 0;
+  margin-bottom: 10px;
 }
 
-p {
-  font-size: 1.2em;
+/* Search Bar */
+#search {
+  padding: 10px;
+  border-radius: 10px;
+  width: 80%;
+  max-width: 400px;
+  margin-bottom: 10px;
+  border: none;
+  font-size: 1em;
+}
+
+/* Tabs */
+.tabs {
+  margin: 10px auto;
+}
+
+.tabs button {
+  margin: 5px;
+  padding: 8px 16px;
+  background-color: #222;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.9em;
+  transition: 0.3s;
+}
+
+.tabs button:hover {
+  background-color: #00f2ff;
+  color: #000;
+}
+
+#player-card {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  display: inline-block;
+  padding: 20px;
+  box-shadow: 0 0 30px #00f2ff33;
+  max-width: 90%;
+}
+
+#thumbnail {
+  width: 200px;
+  height: 200px;
+  border-radius: 15px;
+  object-fit: cover;
+  box-shadow: 0 0 20px #000;
+}
+
+#song-title {
+  margin: 15px 0 5px;
+  font-size: 1.5em;
+}
+
+#song-artist {
+  color: #aaa;
+  margin-bottom: 15px;
+}
+
+audio {
+  width: 100%;
+}
+
+.hint {
+  margin-top: 20px;
+  font-size: 0.9em;
+  color: #aaa;
 }
