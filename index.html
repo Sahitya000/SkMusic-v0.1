@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Resso Clone - Full Functional</title>
+  <title>Resso Clone - Fully Functional</title>
   <style>
     :root {
       --primary: #1ed760;
@@ -76,11 +76,12 @@
       top: 0;
       background: var(--dark);
       padding-bottom: 10px;
+      z-index: 210;
     }
     
     .search-input {
       width: 100%;
-      padding: 15px;
+      padding: 15px 20px;
       font-size: 16px;
       border-radius: 25px;
       border: none;
@@ -96,6 +97,7 @@
       font-size: 24px;
       color: var(--text);
       cursor: pointer;
+      z-index: 220;
     }
     
     /* Main Content */
@@ -153,11 +155,11 @@
       background: rgba(0,0,0,0.3);
       border-radius: 12px;
       margin-bottom: 20px;
-      scrollbar-width: none; /* Firefox */
+      scrollbar-width: none;
     }
     
     .lyrics-container::-webkit-scrollbar {
-      display: none; /* Chrome/Safari */
+      display: none;
     }
     
     .lyrics {
@@ -358,6 +360,48 @@
       100% { transform: translate(-50%, -50%) rotate(360deg); }
     }
     
+    /* Search Results */
+    .search-result-item {
+      display: flex;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      cursor: pointer;
+      align-items: center;
+      transition: background 0.2s;
+    }
+    
+    .search-result-item:hover {
+      background: rgba(255,255,255,0.2);
+    }
+    
+    .search-result-thumbnail {
+      width: 60px;
+      height: 60px;
+      border-radius: 4px;
+      margin-right: 12px;
+      object-fit: cover;
+    }
+    
+    .search-result-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .search-result-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .search-result-channel {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
     /* Hidden YouTube Player */
     #youtube-player {
       position: absolute;
@@ -370,7 +414,7 @@
 <body>
 
   <div class="header">
-    <div class="logo">SkMusic</div>
+    <div class="logo">skmusic v1</div>
     <div class="search-icon" onclick="openSearch()">🔍</div>
     <div class="user-icon">👤</div>
   </div>
@@ -378,7 +422,7 @@
   <div class="search-modal" id="searchModal">
     <div class="close-search" onclick="closeSearch()">✕</div>
     <div class="search-container">
-      <input type="text" class="search-input" id="searchInput" placeholder="Search for songs, artists..." onkeypress="handleSearchKeyPress(event)">
+      <input type="text" class="search-input" id="searchInput" placeholder="Search for songs, artists..." autocomplete="off">
     </div>
     <div id="searchResults"></div>
   </div>
@@ -465,6 +509,7 @@
     let isPlaying = false;
     let progressInterval;
     let touchStartY = 0;
+    let searchDebounceTimer;
     
     // DOM Elements
     const searchModal = document.getElementById('searchModal');
@@ -482,8 +527,9 @@
       document.addEventListener('touchstart', handleTouchStart, false);
       document.addEventListener('touchend', handleTouchEnd, false);
       
-      // For demo purposes, search for popular music initially
-      // searchYouTube('popular songs 2023');
+      // Set up search input event listeners
+      searchInput.addEventListener('input', handleSearchInput);
+      searchInput.addEventListener('keypress', handleSearchKeyPress);
     });
     
     // Load YouTube IFrame API
@@ -518,20 +564,20 @@
       switch(event.data) {
         case YT.PlayerState.PLAYING:
           isPlaying = true;
-          playBtn.textContent = '❚❚';
+          if (playBtn) playBtn.textContent = '❚❚';
           startProgressTracking();
           startLyricsTracking();
           break;
           
         case YT.PlayerState.PAUSED:
           isPlaying = false;
-          playBtn.textContent = '▶';
+          if (playBtn) playBtn.textContent = '▶';
           clearInterval(progressInterval);
           break;
           
         case YT.PlayerState.ENDED:
           isPlaying = false;
-          playBtn.textContent = '▶';
+          if (playBtn) playBtn.textContent = '▶';
           clearInterval(progressInterval);
           playNextVideo();
           break;
@@ -540,10 +586,35 @@
       // Update duration display
       if (event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.PAUSED) {
         const duration = player.getDuration();
-        timeDisplay.innerHTML = `
-          <span>${formatTime(player.getCurrentTime())}</span>
-          <span>${formatTime(duration)}</span>
-        `;
+        if (timeDisplay) {
+          timeDisplay.innerHTML = `
+            <span>${formatTime(player.getCurrentTime())}</span>
+            <span>${formatTime(duration)}</span>
+          `;
+        }
+      }
+    }
+    
+    // Search input handling
+    function handleSearchInput(e) {
+      clearTimeout(searchDebounceTimer);
+      const query = e.target.value.trim();
+      
+      if (query.length > 2) { // Only search if query has at least 3 characters
+        searchDebounceTimer = setTimeout(() => {
+          searchYouTube(query);
+        }, 500); // 500ms debounce
+      } else {
+        searchResultsDiv.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Type at least 3 characters to search</div>';
+      }
+    }
+    
+    function handleSearchKeyPress(e) {
+      if (e.key === 'Enter') {
+        const query = searchInput.value.trim();
+        if (query) {
+          searchYouTube(query);
+        }
       }
     }
     
@@ -554,8 +625,9 @@
       });
       event.currentTarget.classList.add('active');
       
-      // In a real app, you would load different content for each tab
-      console.log(`Switched to ${tab} tab`);
+      if (tab === 'search') {
+        openSearch();
+      }
     }
     
     // Search modal functions
@@ -566,15 +638,8 @@
     
     function closeSearch() {
       searchModal.style.display = 'none';
-    }
-    
-    function handleSearchKeyPress(e) {
-      if (e.key === 'Enter') {
-        const query = searchInput.value.trim();
-        if (query) {
-          searchYouTube(query);
-        }
-      }
+      searchInput.value = '';
+      searchResultsDiv.innerHTML = '';
     }
     
     // YouTube Search API
@@ -587,51 +652,49 @@
       
       // Make API request
       fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query + ' music')}&type=video&key=${API_KEY}`)
-        .then(response => response.json())
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
         .then(data => {
           hideLoader();
-          searchResults = data.items;
-          displaySearchResults(data.items);
+          if (data.items && data.items.length > 0) {
+            searchResults = data.items;
+            displaySearchResults(data.items);
+          } else {
+            searchResultsDiv.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">No results found</div>';
+          }
         })
         .catch(error => {
           hideLoader();
           console.error('Error fetching data:', error);
-          searchResultsDiv.innerHTML = '<p style="color: white; text-align: center; padding: 20px;">Error loading results. Please try again.</p>';
+          searchResultsDiv.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Error loading results. Please try again.</div>';
         });
     }
     
     function displaySearchResults(items) {
       searchResultsDiv.innerHTML = '';
       
-      if (items.length === 0) {
-        searchResultsDiv.innerHTML = '<p style="color: white; text-align: center; padding: 20px;">No results found.</p>';
-        return;
-      }
-      
       items.forEach((item, index) => {
         const videoId = item.id.videoId;
         const title = item.snippet.title;
         const channel = item.snippet.channelTitle;
-        const thumbnail = item.snippet.thumbnails.medium ? item.snippet.thumbnails.medium.url : item.snippet.thumbnails.default.url;
+        const thumbnail = item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url;
         
         const resultItem = document.createElement('div');
-        resultItem.style.display = 'flex';
-        resultItem.style.padding = '10px';
-        resultItem.style.marginBottom = '10px';
-        resultItem.style.backgroundColor = 'rgba(255,255,255,0.1)';
-        resultItem.style.borderRadius = '8px';
-        resultItem.style.cursor = 'pointer';
-        resultItem.style.alignItems = 'center';
+        resultItem.className = 'search-result-item';
         resultItem.onclick = () => {
           currentVideoIndex = index;
           playVideo(videoId, title, channel, thumbnail);
         };
         
         resultItem.innerHTML = `
-          <img src="${thumbnail}" style="width: 80px; height: 60px; border-radius: 4px; margin-right: 10px;">
-          <div style="flex: 1; min-width: 0;">
-            <div style="font-weight: bold; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${title}</div>
-            <div style="font-size: 12px; color: var(--text-secondary);">${channel}</div>
+          <img src="${thumbnail}" class="search-result-thumbnail">
+          <div class="search-result-info">
+            <div class="search-result-title">${title}</div>
+            <div class="search-result-channel">${channel}</div>
           </div>
         `;
         
@@ -695,7 +758,7 @@
         player.playVideo();
       }
       
-      // Fetch lyrics (simulated - in a real app you'd use a lyrics API)
+            // Fetch lyrics (simulated - in a real app you'd use a lyrics API)
       fetchLyrics(title, artist);
     }
     
@@ -711,15 +774,17 @@
         currentLyricIndex = 0;
         
         const lyricsDisplay = document.getElementById('lyricsDisplay');
-        lyricsDisplay.innerHTML = '';
-        
-        lyrics.forEach((line, index) => {
-          const lineDiv = document.createElement('div');
-          lineDiv.className = 'lyrics-line';
-          lineDiv.textContent = line.text;
-          if (index === 0) lineDiv.classList.add('active');
-          lyricsDisplay.appendChild(lineDiv);
-        });
+        if (lyricsDisplay) {
+          lyricsDisplay.innerHTML = '';
+          
+          lyrics.forEach((line, index) => {
+            const lineDiv = document.createElement('div');
+            lineDiv.className = 'lyrics-line';
+            lineDiv.textContent = line.text;
+            if (index === 0) lineDiv.classList.add('active');
+            lyricsDisplay.appendChild(lineDiv);
+          });
+        }
       }, 1000);
     }
     
@@ -739,4 +804,164 @@
       ];
       
       return lines.map((text, i) => ({
-        text: t
+        text: text,
+        time: i * 10 // Each line appears every 10 seconds for demo
+      }));
+    }
+    
+    // Player control functions
+    function togglePlay() {
+      if (!player) return;
+      
+      if (isPlaying) {
+        player.pauseVideo();
+      } else {
+        player.playVideo();
+      }
+    }
+    
+    function playNextVideo() {
+      if (searchResults.length === 0) return;
+      
+      currentVideoIndex = (currentVideoIndex + 1) % searchResults.length;
+      const nextVideo = searchResults[currentVideoIndex];
+      playVideo(
+        nextVideo.id.videoId,
+        nextVideo.snippet.title,
+        nextVideo.snippet.channelTitle,
+        nextVideo.snippet.thumbnails?.medium?.url || nextVideo.snippet.thumbnails?.default?.url
+      );
+    }
+    
+    function playPreviousVideo() {
+      if (searchResults.length === 0) return;
+      
+      currentVideoIndex = (currentVideoIndex - 1 + searchResults.length) % searchResults.length;
+      const prevVideo = searchResults[currentVideoIndex];
+      playVideo(
+        prevVideo.id.videoId,
+        prevVideo.snippet.title,
+        prevVideo.snippet.channelTitle,
+        prevVideo.snippet.thumbnails?.medium?.url || prevVideo.snippet.thumbnails?.default?.url
+      );
+    }
+    
+    function toggleShuffle() {
+      // Shuffle functionality would go here
+      console.log('Shuffle toggled');
+    }
+    
+    function toggleRepeat() {
+      // Repeat functionality would go here
+      console.log('Repeat toggled');
+    }
+    
+    // Progress tracking
+    function startProgressTracking() {
+      clearInterval(progressInterval);
+      
+      const progressBar = document.getElementById('progressBar');
+      const timeDisplay = document.getElementById('timeDisplay');
+      const progressBarContainer = document.getElementById('progressBarContainer');
+      
+      // Update progress bar periodically
+      progressInterval = setInterval(() => {
+        if (player && player.getCurrentTime) {
+          const currentTime = player.getCurrentTime();
+          const duration = player.getDuration();
+          const progressPercent = (currentTime / duration) * 100;
+          
+          if (progressBar) progressBar.style.width = `${progressPercent}%`;
+          if (timeDisplay) {
+            timeDisplay.innerHTML = `
+              <span>${formatTime(currentTime)}</span>
+              <span>${formatTime(duration)}</span>
+            `;
+          }
+        }
+      }, 1000);
+      
+      // Add click handler for seeking
+      if (progressBarContainer) {
+        progressBarContainer.addEventListener('click', (e) => {
+          if (!player || !player.getDuration) return;
+          
+          const rect = progressBarContainer.getBoundingClientRect();
+          const clickPosition = (e.clientX - rect.left) / rect.width;
+          const duration = player.getDuration();
+          const seekTime = duration * clickPosition;
+          
+          player.seekTo(seekTime, true);
+        });
+      }
+    }
+    
+    // Lyrics tracking
+    function startLyricsTracking() {
+      // In a real app, you would sync lyrics with the actual song timing
+      // This is just a simulation that advances lyrics every few seconds
+      const lyricsInterval = setInterval(() => {
+        if (!isPlaying || lyrics.length === 0) return;
+        
+        const lyricsLines = document.querySelectorAll('.lyrics-line');
+        if (lyricsLines.length === 0) {
+          clearInterval(lyricsInterval);
+          return;
+        }
+        
+        lyricsLines.forEach(line => line.classList.remove('active'));
+        
+        currentLyricIndex = (currentLyricIndex + 1) % lyrics.length;
+        lyricsLines[currentLyricIndex].classList.add('active');
+        
+        // Auto-scroll to keep active line visible
+        lyricsLines[currentLyricIndex].scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
+        });
+      }, 3000);
+    }
+    
+    // Touch events for swipe navigation
+    function handleTouchStart(e) {
+      touchStartY = e.touches[0].clientY;
+    }
+    
+    function handleTouchEnd(e) {
+      if (!touchStartY) return;
+      
+      const touchEndY = e.changedTouches[0].clientY;
+      const diffY = touchStartY - touchEndY;
+      
+      // Minimum swipe distance
+      if (Math.abs(diffY) > 50) {
+        if (diffY > 0) {
+          // Swipe up - next song
+          playNextVideo();
+        } else {
+          // Swipe down - previous song
+          playPreviousVideo();
+        }
+      }
+      
+      touchStartY = 0;
+    }
+    
+    // Helper functions
+    function formatTime(seconds) {
+      if (isNaN(seconds)) return "0:00";
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+    
+    function showLoader() {
+      loader.style.display = 'block';
+    }
+    
+    function hideLoader() {
+      loader.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
