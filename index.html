@@ -321,7 +321,6 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      pointer-events: none;
     }
     
     .tap-icon {
@@ -330,6 +329,7 @@
       transition: opacity 0.3s;
       color: white;
       text-shadow: 0 0 10px rgba(0,0,0,0.5);
+      pointer-events: none;
     }
     
     .show-tap-icon {
@@ -655,11 +655,8 @@
       
       // Add tap event listener for play/pause
       const tapOverlay = document.getElementById('tapOverlay');
-      tapOverlay.addEventListener('click', function(e) {
-        // Only trigger if the click is not on the progress bar or controls
-        if (!e.target.closest('.progress-container') && !e.target.closest('.controls')) {
-          togglePlayWithAnimation();
-        }
+      tapOverlay.addEventListener('click', function() {
+        togglePlayWithAnimation();
       });
       
       // Load and play the video
@@ -673,9 +670,11 @@
     
     function togglePlayWithAnimation() {
       const tapIcon = document.getElementById('tapIcon');
+      const playBtn = document.getElementById('playBtn');
+      
       if (tapIcon) {
-        tapIcon.classList.add('show-tap-icon');
         tapIcon.textContent = isPlaying ? '▶' : '❚❚';
+        tapIcon.classList.add('show-tap-icon');
         
         setTimeout(() => {
           tapIcon.classList.remove('show-tap-icon');
@@ -683,6 +682,11 @@
       }
       
       togglePlay();
+      
+      // Update play button in controls
+      if (playBtn) {
+        playBtn.textContent = isPlaying ? '❚❚' : '▶';
+      }
     }
     
     // Player control functions
@@ -693,12 +697,6 @@
         player.pauseVideo();
       } else {
         player.playVideo();
-      }
-      
-      // Update play button in controls
-      const playBtn = document.getElementById('playBtn');
-      if (playBtn) {
-        playBtn.textContent = isPlaying ? '❚❚' : '▶';
       }
     }
     
