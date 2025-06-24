@@ -78,7 +78,6 @@
     /* Main Content */
     .container {
       padding-top: 20px;
-      padding-bottom: 80px; /* Space for bottom nav */
     }
     
     /* Song Cards */
@@ -210,20 +209,7 @@
       color: black;
     }
     
-    .like-btn {
-      background: none;
-      border: none;
-      color: var(--text-secondary);
-      font-size: 20px;
-      cursor: pointer;
-      padding: 10px;
-    }
-    
-    .like-btn.liked {
-      color: var(--primary);
-    }
-    
-    /* Bottom Navigation - Instagram Style */
+    /* Bottom Navigation */
     .bottom-nav {
       position: fixed;
       bottom: 0;
@@ -231,54 +217,26 @@
       display: flex;
       justify-content: space-around;
       padding: 15px 0;
-      background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888);
+      background: var(--light-dark);
       z-index: 100;
-      box-shadow: 0 -5px 15px rgba(0,0,0,0.3);
     }
     
     .nav-item {
       display: flex;
       flex-direction: column;
       align-items: center;
-      color: rgba(255,255,255,0.7);
+      color: var(--text-secondary);
       font-size: 12px;
       cursor: pointer;
-      transition: all 0.3s ease;
     }
     
     .nav-item.active {
-      color: white;
+      color: var(--primary);
     }
     
     .nav-icon {
       font-size: 20px;
       margin-bottom: 5px;
-    }
-    
-    /* Instagram-like play/pause overlay */
-    .play-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: rgba(0,0,0,0.5);
-      z-index: 5;
-      opacity: 0;
-      transition: opacity 0.3s;
-      pointer-events: none;
-    }
-    
-    .play-overlay.active {
-      opacity: 1;
-    }
-    
-    .play-overlay-icon {
-      font-size: 60px;
-      color: white;
     }
     
     /* Loading Spinner */
@@ -302,63 +260,54 @@
       100% { transform: translate(-50%, -50%) rotate(360deg); }
     }
     
-    /* Mini Player */
-    .mini-player {
-      position: fixed;
-      bottom: 60px;
-      left: 0;
-      width: 100%;
-      background: linear-gradient(45deg, rgba(241, 148, 51, 0.9), rgba(233, 104, 60, 0.9), rgba(220, 39, 67, 0.9), rgba(204, 35, 102, 0.9), rgba(188, 24, 136, 0.9));
-      padding: 10px 15px;
+    /* Search Results */
+    .search-result-item {
       display: flex;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      cursor: pointer;
       align-items: center;
-      z-index: 90;
-      transform: translateY(100%);
-      transition: transform 0.3s ease;
+      transition: background 0.2s;
     }
     
-    .mini-player.active {
-      transform: translateY(0);
+    .search-result-item:hover {
+      background: rgba(255,255,255,0.2);
     }
     
-    .mini-player-thumbnail {
-      width: 40px;
-      height: 40px;
+    .search-result-thumbnail {
+      width: 60px;
+      height: 60px;
       border-radius: 4px;
       margin-right: 12px;
       object-fit: cover;
     }
     
-    .mini-player-info {
+    .search-result-info {
       flex: 1;
       min-width: 0;
     }
     
-    .mini-player-title {
+    .search-result-title {
       font-weight: bold;
-      font-size: 14px;
+      margin-bottom: 4px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
     
-    .mini-player-artist {
+    .search-result-channel {
       font-size: 12px;
-      color: rgba(255,255,255,0.8);
+      color: var(--text-secondary);
     }
     
-    .mini-player-controls {
-      display: flex;
-      align-items: center;
-    }
-    
-    .mini-player-btn {
-      background: none;
-      border: none;
-      color: white;
-      font-size: 18px;
-      margin-left: 15px;
-      cursor: pointer;
+    /* Hidden YouTube Player */
+    #youtube-player {
+      position: absolute;
+      width: 0;
+      height: 0;
+      opacity: 0;
     }
   </style>
 </head>
@@ -374,13 +323,10 @@
 
   <div class="loader" id="loader"></div>
 
-  <!-- Main Player View -->
-  <div class="container" id="playerView">
+  <div class="container" id="results">
+    <!-- Default content will be replaced by search results -->
     <div class="song" style="background-image: url('https://i.ytimg.com/vi/JGwWNGJdvx8/maxresdefault.jpg')">
       <div class="overlay"></div>
-      <div class="play-overlay" id="playOverlay">
-        <div class="play-overlay-icon" id="playOverlayIcon">❚❚</div>
-      </div>
       
       <div class="song-info">
         <h1 class="song-title">Welcome to Music Player</h1>
@@ -403,41 +349,28 @@
           <button class="control-btn">⏮</button>
           <button class="play-btn">▶</button>
           <button class="control-btn">⏭</button>
-          <button class="like-btn">❤️</button>
+          <button class="control-btn">🔁</button>
         </div>
       </div>
     </div>
   </div>
   
-  <!-- Mini Player -->
-  <div class="mini-player" id="miniPlayer">
-    <img src="" class="mini-player-thumbnail" id="miniPlayerThumbnail">
-    <div class="mini-player-info">
-      <div class="mini-player-title" id="miniPlayerTitle">No song playing</div>
-      <div class="mini-player-artist" id="miniPlayerArtist"></div>
-    </div>
-    <div class="mini-player-controls">
-      <button class="mini-player-btn" id="miniPlayerPlayBtn">▶</button>
-    </div>
-  </div>
-  
-  <!-- Bottom Navigation -->
   <div class="bottom-nav">
-    <div class="nav-item active" onclick="switchTab('feed')">
-      <div class="nav-icon">🎵</div>
-      <div>Feed</div>
+    <div class="nav-item active" onclick="switchTab('home')">
+      <div class="nav-icon">🏠</div>
+      <div>Home</div>
     </div>
     <div class="nav-item" onclick="switchTab('search')">
       <div class="nav-icon">🔍</div>
       <div>Search</div>
     </div>
-    <div class="nav-item" onclick="switchTab('liked')">
-      <div class="nav-icon">❤️</div>
-      <div>Liked</div>
-    </div>
     <div class="nav-item" onclick="switchTab('library')">
       <div class="nav-icon">📻</div>
       <div>Library</div>
+    </div>
+    <div class="nav-item" onclick="switchTab('settings')">
+      <div class="nav-icon">⚙️</div>
+      <div>Settings</div>
     </div>
   </div>
 
@@ -445,49 +378,39 @@
   <div id="youtube-player"></div>
 
   <script>
+    // Replace with your actual YouTube API key
     const API_KEY = 'AIzaSyAz3LnhWy_Ciz6I74NvUVfb3J4XSj8Jw_M';
     let player;
     let currentVideoId = '';
+    let currentVideoIndex = 0;
+    let searchResults = [];
     let isPlaying = false;
     let progressInterval;
-    let likedSongs = [];
+    let touchStartY = 0;
+    let searchDebounceTimer;
     
     // DOM Elements
     const searchModal = document.getElementById('searchModal');
     const searchInput = document.getElementById('searchInput');
     const searchResultsDiv = document.getElementById('searchResults');
-    const playerView = document.getElementById('playerView');
+    const resultsContainer = document.getElementById('results');
     const loader = document.getElementById('loader');
-    const miniPlayer = document.getElementById('miniPlayer');
-    const miniPlayerThumbnail = document.getElementById('miniPlayerThumbnail');
-    const miniPlayerTitle = document.getElementById('miniPlayerTitle');
-    const miniPlayerArtist = document.getElementById('miniPlayerArtist');
-    const miniPlayerPlayBtn = document.getElementById('miniPlayerPlayBtn');
-    const playOverlay = document.getElementById('playOverlay');
-    const playOverlayIcon = document.getElementById('playOverlayIcon');
     
-    // Initialize the app
+    // Initialize the app when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
+      // Load YouTube IFrame API
       loadYouTubeAPI();
       
-      // Set up search input
+      // Set up touch events for swipe navigation
+      document.addEventListener('touchstart', handleTouchStart, false);
+      document.addEventListener('touchend', handleTouchEnd, false);
+      
+      // Set up search input event listeners
       searchInput.addEventListener('input', handleSearchInput);
-      
-      // Set up mini player controls
-      miniPlayerPlayBtn.addEventListener('click', togglePlay);
-      
-      // Set up play/pause on song tap (Instagram-like)
-      document.addEventListener('click', function(e) {
-        if (e.target.closest('.song')) {
-          togglePlay();
-          showPlayOverlay();
-        }
-      });
-      
-      // Load liked songs
-      loadLikedSongs();
+      searchInput.addEventListener('keypress', handleSearchKeyPress);
     });
     
+    // Load YouTube IFrame API
     function loadYouTubeAPI() {
       const tag = document.createElement('script');
       tag.src = "https://www.youtube.com/iframe_api";
@@ -495,6 +418,7 @@
       firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
     }
     
+    // YouTube API ready callback
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('youtube-player', {
         height: '0',
@@ -507,67 +431,130 @@
     }
     
     function onPlayerReady(event) {
-      console.log('Player ready');
+      console.log('YouTube player ready');
     }
     
     function onPlayerStateChange(event) {
+      const timeDisplay = document.querySelector('.time');
+      const progressBar = document.querySelector('.progress');
       const playBtn = document.querySelector('.play-btn');
       
       switch(event.data) {
         case YT.PlayerState.PLAYING:
           isPlaying = true;
           if (playBtn) playBtn.textContent = '❚❚';
-          miniPlayerPlayBtn.textContent = '❚❚';
-          playOverlayIcon.textContent = '❚❚';
           startProgressTracking();
           break;
           
         case YT.PlayerState.PAUSED:
           isPlaying = false;
           if (playBtn) playBtn.textContent = '▶';
-          miniPlayerPlayBtn.textContent = '▶';
-          playOverlayIcon.textContent = '▶';
           clearInterval(progressInterval);
           break;
           
         case YT.PlayerState.ENDED:
           isPlaying = false;
           if (playBtn) playBtn.textContent = '▶';
-          miniPlayerPlayBtn.textContent = '▶';
-          playOverlayIcon.textContent = '▶';
           clearInterval(progressInterval);
+          playNextVideo();
           break;
       }
-    }
-    
-    function handleSearchInput(e) {
-      const query = e.target.value.trim();
-      if (query.length > 2) {
-        searchYouTube(query);
+      
+      // Update duration display
+      if (event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.PAUSED) {
+        const duration = player.getDuration();
+        if (timeDisplay) {
+          timeDisplay.innerHTML = `
+            <span>${formatTime(player.getCurrentTime())}</span>
+            <span>${formatTime(duration)}</span>
+          `;
+        }
       }
     }
     
+    // Search input handling
+    function handleSearchInput(e) {
+      clearTimeout(searchDebounceTimer);
+      const query = e.target.value.trim();
+      
+      if (query.length > 2) { // Only search if query has at least 3 characters
+        searchDebounceTimer = setTimeout(() => {
+          searchYouTube(query);
+        }, 500); // 500ms debounce
+      } else {
+        searchResultsDiv.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Type at least 3 characters to search</div>';
+      }
+    }
+    
+    function handleSearchKeyPress(e) {
+      if (e.key === 'Enter') {
+        const query = searchInput.value.trim();
+        if (query) {
+          searchYouTube(query);
+        }
+      }
+    }
+    
+    // Tab management
+    function switchTab(tab) {
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      event.currentTarget.classList.add('active');
+      
+      if (tab === 'search') {
+        openSearch();
+      }
+    }
+    
+    // Search modal functions
+    function openSearch() {
+      searchModal.style.display = 'block';
+      searchInput.focus();
+    }
+    
+    function closeSearch() {
+      searchModal.style.display = 'none';
+      searchInput.value = '';
+      searchResultsDiv.innerHTML = '';
+    }
+    
+    // YouTube Search API
     function searchYouTube(query) {
       showLoader();
       
+      // Clear previous results
+      searchResultsDiv.innerHTML = '';
+      searchResults = [];
+      
+      // Make API request
       fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query + ' music')}&type=video&key=${API_KEY}`)
-        .then(response => response.json())
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
         .then(data => {
           hideLoader();
-          if (data.items) {
+          if (data.items && data.items.length > 0) {
+            searchResults = data.items;
             displaySearchResults(data.items);
+          } else {
+            searchResultsDiv.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">No results found</div>';
           }
         })
         .catch(error => {
           hideLoader();
-          console.error('Error:', error);
+          console.error('Error fetching data:', error);
+          searchResultsDiv.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Error loading results. Please try again.</div>';
         });
     }
     
     function displaySearchResults(items) {
       searchResultsDiv.innerHTML = '';
       
-      items.forEach(item => {
+      items.forEach((item, index) => {
         const videoId = item.id.videoId;
         const title = item.snippet.title;
         const channel = item.snippet.channelTitle;
@@ -575,7 +562,10 @@
         
         const resultItem = document.createElement('div');
         resultItem.className = 'search-result-item';
-        resultItem.onclick = () => playVideo(videoId, title, channel, thumbnail);
+        resultItem.onclick = () => {
+          currentVideoIndex = index;
+          playVideo(videoId, title, channel, thumbnail);
+        };
         
         resultItem.innerHTML = `
           <img src="${thumbnail}" class="search-result-thumbnail">
@@ -589,52 +579,49 @@
       });
     }
     
+    // Video playback functions
     function playVideo(videoId, title, artist, thumbnail) {
       currentVideoId = videoId;
       
-      playerView.innerHTML = `
-        <div class="song" style="background-image: url('${thumbnail}')">
-          <div class="overlay"></div>
-          <div class="play-overlay" id="playOverlay">
-            <div class="play-overlay-icon" id="playOverlayIcon">❚❚</div>
+      // Update the UI
+      resultsContainer.innerHTML = '';
+      
+      const songDiv = document.createElement('div');
+      songDiv.className = 'song';
+      songDiv.style.backgroundImage = `url(${thumbnail})`;
+      
+      songDiv.innerHTML = `
+        <div class="overlay"></div>
+        
+        <div class="song-info">
+          <h1 class="song-title">${title}</h1>
+          <p class="song-artist">${artist}</p>
+        </div>
+        
+        <div class="player-controls">
+          <div class="progress-container">
+            <div class="progress-bar" id="progressBarContainer">
+              <div class="progress" id="progressBar"></div>
+              <div class="progress-handle"></div>
+            </div>
+            <div class="time" id="timeDisplay">
+              <span>0:00</span>
+              <span>0:00</span>
+            </div>
           </div>
           
-          <div class="song-info">
-            <h1 class="song-title">${title}</h1>
-            <p class="song-artist">${artist}</p>
-          </div>
-          
-          <div class="player-controls">
-            <div class="progress-container">
-              <div class="progress-bar" id="progressBarContainer">
-                <div class="progress" id="progressBar"></div>
-              </div>
-              <div class="time" id="timeDisplay">
-                <span>0:00</span>
-                <span>0:00</span>
-              </div>
-            </div>
-            
-            <div class="controls">
-              <button class="control-btn">🔀</button>
-              <button class="control-btn">⏮</button>
-              <button class="play-btn" onclick="togglePlay()">▶</button>
-              <button class="control-btn">⏭</button>
-              <button class="like-btn" onclick="toggleLikeSong('${videoId}', '${title.replace(/'/g, "\\'")}', '${artist.replace(/'/g, "\\'")}', '${thumbnail}')">
-                ❤️
-              </button>
-            </div>
+          <div class="controls">
+            <button class="control-btn" onclick="toggleShuffle()">🔀</button>
+            <button class="control-btn" onclick="playPreviousVideo()">⏮</button>
+            <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
+            <button class="control-btn" onclick="playNextVideo()">⏭</button>
+            <button class="control-btn" onclick="toggleRepeat()">🔁</button>
           </div>
         </div>
       `;
       
+      resultsContainer.appendChild(songDiv);
       closeSearch();
-      
-      // Update mini player
-      miniPlayerThumbnail.src = thumbnail;
-      miniPlayerTitle.textContent = title;
-      miniPlayerArtist.textContent = artist;
-      miniPlayer.classList.add('active');
       
       // Load and play the video
       if (player) {
@@ -643,30 +630,7 @@
       }
     }
     
-    function toggleLikeSong(videoId, title, artist, thumbnail) {
-      const song = {videoId, title, artist, thumbnail};
-      const likeBtn = document.querySelector('.like-btn');
-      
-      const existingIndex = likedSongs.findIndex(s => s.videoId === videoId);
-      
-      if (existingIndex !== -1) {
-        likedSongs.splice(existingIndex, 1);
-        likeBtn.classList.remove('liked');
-      } else {
-        likedSongs.unshift(song);
-        likeBtn.classList.add('liked');
-      }
-      
-      localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
-    }
-    
-    function loadLikedSongs() {
-      const savedLikedSongs = localStorage.getItem('likedSongs');
-      if (savedLikedSongs) {
-        likedSongs = JSON.parse(savedLikedSongs);
-      }
-    }
-    
+    // Player control functions
     function togglePlay() {
       if (!player) return;
       
@@ -677,24 +641,56 @@
       }
     }
     
-    function showPlayOverlay() {
-      playOverlay.classList.add('active');
-      setTimeout(() => {
-        playOverlay.classList.remove('active');
-      }, 500);
+    function playNextVideo() {
+      if (searchResults.length === 0) return;
+      
+      currentVideoIndex = (currentVideoIndex + 1) % searchResults.length;
+      const nextVideo = searchResults[currentVideoIndex];
+      playVideo(
+        nextVideo.id.videoId,
+        nextVideo.snippet.title,
+        nextVideo.snippet.channelTitle,
+        nextVideo.snippet.thumbnails?.medium?.url || nextVideo.snippet.thumbnails?.default?.url
+      );
     }
     
+    function playPreviousVideo() {
+      if (searchResults.length === 0) return;
+      
+      currentVideoIndex = (currentVideoIndex - 1 + searchResults.length) % searchResults.length;
+      const prevVideo = searchResults[currentVideoIndex];
+      playVideo(
+        prevVideo.id.videoId,
+        prevVideo.snippet.title,
+        prevVideo.snippet.channelTitle,
+        prevVideo.snippet.thumbnails?.medium?.url || prevVideo.snippet.thumbnails?.default?.url
+      );
+    }
+    
+    function toggleShuffle() {
+      // Shuffle functionality would go here
+      console.log('Shuffle toggled');
+    }
+    
+    function toggleRepeat() {
+      // Repeat functionality would go here
+      console.log('Repeat toggled');
+    }
+    
+    // Progress tracking
     function startProgressTracking() {
       clearInterval(progressInterval);
       
+      const progressBar = document.getElementById('progressBar');
+      const timeDisplay = document.getElementById('timeDisplay');
+      const progressBarContainer = document.getElementById('progressBarContainer');
+      
+      // Update progress bar periodically
       progressInterval = setInterval(() => {
         if (player && player.getCurrentTime) {
           const currentTime = player.getCurrentTime();
           const duration = player.getDuration();
           const progressPercent = (currentTime / duration) * 100;
-          
-          const progressBar = document.getElementById('progressBar');
-          const timeDisplay = document.getElementById('timeDisplay');
           
           if (progressBar) progressBar.style.width = `${progressPercent}%`;
           if (timeDisplay) {
@@ -705,32 +701,53 @@
           }
         }
       }, 1000);
-    }
-    
-    function switchTab(tab) {
-      document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
-      });
-      event.currentTarget.classList.add('active');
       
-      if (tab === 'search') {
-        openSearch();
+      // Add click handler for seeking
+      if (progressBarContainer) {
+        progressBarContainer.addEventListener('click', (e) => {
+          if (!player || !player.getDuration) return;
+          
+          const rect = progressBarContainer.getBoundingClientRect();
+          const clickPosition = (e.clientX - rect.left) / rect.width;
+          const duration = player.getDuration();
+          const seekTime = duration * clickPosition;
+          
+          player.seekTo(seekTime, true);
+        });
       }
     }
     
-    function openSearch() {
-      searchModal.style.display = 'block';
-      playerView.style.display = 'none';
-      miniPlayer.classList.remove('active');
-      searchInput.focus();
+    // Touch events for swipe navigation
+    function handleTouchStart(e) {
+      touchStartY = e.touches[0].clientY;
     }
     
-    function closeSearch() {
-      searchModal.style.display = 'none';
-      playerView.style.display = 'block';
-      if (currentVideoId) {
-        miniPlayer.classList.add('active');
+    function handleTouchEnd(e) {
+      if (!touchStartY) return;
+      
+      const touchEndY = e.changedTouches[0].clientY;
+      const diffY = touchStartY - touchEndY;
+      
+      // Minimum swipe distance
+      if (Math.abs(diffY) > 50) {
+        if (diffY > 0) {
+          // Swipe up - next song
+          playNextVideo();
+        } else {
+          // Swipe down - previous song
+          playPreviousVideo();
+        }
       }
+      
+      touchStartY = 0;
+    }
+    
+    // Helper functions
+    function formatTime(seconds) {
+      if (isNaN(seconds)) return "0:00";
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
     }
     
     function showLoader() {
@@ -739,12 +756,6 @@
     
     function hideLoader() {
       loader.style.display = 'none';
-    }
-    
-    function formatTime(seconds) {
-      const mins = Math.floor(seconds / 60);
-      const secs = Math.floor(seconds % 60);
-      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
     }
   </script>
 </body>
