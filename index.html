@@ -209,6 +209,19 @@
       color: black;
     }
     
+    .like-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 10px;
+    }
+    
+    .like-btn.liked {
+      color: var(--primary);
+    }
+    
     /* Bottom Navigation */
     .bottom-nav {
       position: fixed;
@@ -302,6 +315,47 @@
       color: var(--text-secondary);
     }
     
+    /* Feed and Liked Songs */
+    .feed-container, .liked-songs-container {
+      padding: 20px;
+      display: none;
+    }
+    
+    .song-feed-item, .liked-song-item {
+      display: flex;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      align-items: center;
+    }
+    
+    .song-feed-thumbnail, .liked-song-thumbnail {
+      width: 50px;
+      height: 50px;
+      border-radius: 4px;
+      margin-right: 12px;
+      object-fit: cover;
+    }
+    
+    .song-feed-info, .liked-song-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .song-feed-title, .liked-song-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .song-feed-artist, .liked-song-artist {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
     /* Hidden YouTube Player */
     #youtube-player {
       position: absolute;
@@ -323,8 +377,8 @@
 
   <div class="loader" id="loader"></div>
 
-  <div class="container" id="results">
-    <!-- Default content will be replaced by search results -->
+  <!-- Main Player View -->
+  <div class="container" id="playerView">
     <div class="song" style="background-image: url('https://i.ytimg.com/vi/JGwWNGJdvx8/maxresdefault.jpg')">
       <div class="overlay"></div>
       
@@ -349,28 +403,40 @@
           <button class="control-btn">⏮</button>
           <button class="play-btn">▶</button>
           <button class="control-btn">⏭</button>
-          <button class="control-btn">🔁</button>
+          <button class="like-btn">❤️</button>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Feed View -->
+  <div class="feed-container" id="feedView">
+    <h2 style="margin-bottom: 20px;">Recently Played</h2>
+    <div id="songFeed"></div>
+  </div>
+
+  <!-- Liked Songs View -->
+  <div class="liked-songs-container" id="likedSongsView">
+    <h2 style="margin-bottom: 20px;">Your Liked Songs</h2>
+    <div id="likedSongsList"></div>
+  </div>
   
   <div class="bottom-nav">
-    <div class="nav-item active" onclick="switchTab('home')">
-      <div class="nav-icon">🏠</div>
-      <div>Home</div>
+    <div class="nav-item active" onclick="switchTab('feed')">
+      <div class="nav-icon">🎵</div>
+      <div>Feed</div>
     </div>
     <div class="nav-item" onclick="switchTab('search')">
       <div class="nav-icon">🔍</div>
       <div>Search</div>
     </div>
+    <div class="nav-item" onclick="switchTab('liked')">
+      <div class="nav-icon">❤️</div>
+      <div>Liked</div>
+    </div>
     <div class="nav-item" onclick="switchTab('library')">
       <div class="nav-icon">📻</div>
       <div>Library</div>
-    </div>
-    <div class="nav-item" onclick="switchTab('settings')">
-      <div class="nav-icon">⚙️</div>
-      <div>Settings</div>
     </div>
   </div>
 
@@ -388,12 +454,18 @@
     let progressInterval;
     let touchStartY = 0;
     let searchDebounceTimer;
+    let likedSongs = [];
+    let playedSongs = [];
     
     // DOM Elements
     const searchModal = document.getElementById('searchModal');
     const searchInput = document.getElementById('searchInput');
     const searchResultsDiv = document.getElementById('searchResults');
-    const resultsContainer = document.getElementById('results');
+    const playerView = document.getElementById('playerView');
+    const feedView = document.getElementById('feedView');
+    const likedSongsView = document.getElementById('likedSongsView');
+    const songFeed = document.getElementById('songFeed');
+    const likedSongsList = document.getElementById('likedSongsList');
     const loader = document.getElementById('loader');
     
     // Initialize the app when DOM is loaded
@@ -408,6 +480,9 @@
       // Set up search input event listeners
       searchInput.addEventListener('input', handleSearchInput);
       searchInput.addEventListener('keypress', handleSearchKeyPress);
+      
+      // Load any saved liked songs from localStorage
+      loadLikedSongs();
     });
     
     // Load YouTube IFrame API
@@ -502,14 +577,31 @@
       });
       event.currentTarget.classList.add('active');
       
-      if (tab === 'search') {
+      playerView.style.display = 'none';
+      feedView.style.display = 'none';
+      likedSongsView.style.display = 'none';
+      searchModal.style.display = 'none';
+      
+      if (tab === 'feed') {
+        feedView.style.display = 'block';
+        updateSongFeed();
+      } else if (tab === 'search') {
         openSearch();
+      } else if (tab === 'liked') {
+        likedSongsView.style.display = 'block';
+        updateLikedSongsList();
+      } else if (tab === 'library') {
+        // Library tab functionality could be added here
+        feedView.style.display = 'block';
       }
     }
     
     // Search modal functions
     function openSearch() {
       searchModal.style.display = 'block';
+      playerView.style.display = 'none';
+      feedView.style.display = 'none';
+      likedSongsView.style.display = 'none';
       searchInput.focus();
     }
     
@@ -517,6 +609,7 @@
       searchModal.style.display = 'none';
       searchInput.value = '';
       searchResultsDiv.innerHTML = '';
+      playerView.style.display = 'block';
     }
     
     // YouTube Search API
@@ -583,12 +676,18 @@
     function playVideo(videoId, title, artist, thumbnail) {
       currentVideoId = videoId;
       
+      // Add to played songs history
+      addToPlayedSongs({videoId, title, artist, thumbnail});
+      
       // Update the UI
-      resultsContainer.innerHTML = '';
+      playerView.innerHTML = '';
       
       const songDiv = document.createElement('div');
       songDiv.className = 'song';
       songDiv.style.backgroundImage = `url(${thumbnail})`;
+      
+      // Check if this song is liked
+      const isLiked = likedSongs.some(song => song.videoId === videoId);
       
       songDiv.innerHTML = `
         <div class="overlay"></div>
@@ -611,22 +710,151 @@
           </div>
           
           <div class="controls">
-            <button class="control-btn" onclick="toggleShuffle()">🔀</button>
+            <button class="control-btn">🔀</button>
             <button class="control-btn" onclick="playPreviousVideo()">⏮</button>
             <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
             <button class="control-btn" onclick="playNextVideo()">⏭</button>
-            <button class="control-btn" onclick="toggleRepeat()">🔁</button>
+            <button class="like-btn ${isLiked ? 'liked' : ''}" onclick="toggleLikeSong('${videoId}', '${title.replace(/'/g, "\\'")}', '${artist.replace(/'/g, "\\'")}', '${thumbnail}')">
+              ❤️
+            </button>
           </div>
         </div>
       `;
       
-      resultsContainer.appendChild(songDiv);
+      playerView.appendChild(songDiv);
       closeSearch();
       
       // Load and play the video
       if (player) {
         player.loadVideoById(videoId);
         player.playVideo();
+      }
+    }
+    
+    // Add song to played history
+    function addToPlayedSongs(song) {
+      // Check if song already exists in history
+      const existingIndex = playedSongs.findIndex(s => s.videoId === song.videoId);
+      
+      if (existingIndex !== -1) {
+        // Remove existing entry to avoid duplicates
+        playedSongs.splice(existingIndex, 1);
+      }
+      
+      // Add to beginning of array
+      playedSongs.unshift(song);
+      
+      // Keep only the last 20 played songs
+      if (playedSongs.length > 20) {
+        playedSongs = playedSongs.slice(0, 20);
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('playedSongs', JSON.stringify(playedSongs));
+      
+      // Update feed if visible
+      if (feedView.style.display === 'block') {
+        updateSongFeed();
+      }
+    }
+    
+    // Update song feed display
+    function updateSongFeed() {
+      songFeed.innerHTML = '';
+      
+      if (playedSongs.length === 0) {
+        songFeed.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">No recently played songs</div>';
+        return;
+      }
+      
+      playedSongs.forEach(song => {
+        const songItem = document.createElement('div');
+        songItem.className = 'song-feed-item';
+        songItem.onclick = () => {
+          playVideo(song.videoId, song.title, song.artist, song.thumbnail);
+          playerView.style.display = 'block';
+          feedView.style.display = 'none';
+        };
+        
+        songItem.innerHTML = `
+          <img src="${song.thumbnail}" class="song-feed-thumbnail">
+          <div class="song-feed-info">
+            <div class="song-feed-title">${song.title}</div>
+            <div class="song-feed-artist">${song.artist}</div>
+          </div>
+        `;
+        
+        songFeed.appendChild(songItem);
+      });
+    }
+    
+    // Like/unlike song
+    function toggleLikeSong(videoId, title, artist, thumbnail) {
+      const song = {videoId, title, artist, thumbnail};
+      const likeBtn = document.querySelector('.like-btn');
+      
+      // Check if already liked
+      const existingIndex = likedSongs.findIndex(s => s.videoId === videoId);
+      
+      if (existingIndex !== -1) {
+        // Unlike
+        likedSongs.splice(existingIndex, 1);
+        likeBtn.classList.remove('liked');
+      } else {
+        // Like
+        likedSongs.unshift(song);
+        likeBtn.classList.add('liked');
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
+      
+      // Update liked songs list if visible
+      if (likedSongsView.style.display === 'block') {
+        updateLikedSongsList();
+      }
+    }
+    
+    // Update liked songs list
+    function updateLikedSongsList() {
+      likedSongsList.innerHTML = '';
+      
+      if (likedSongs.length === 0) {
+        likedSongsList.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">No liked songs yet</div>';
+        return;
+      }
+      
+      likedSongs.forEach(song => {
+        const songItem = document.createElement('div');
+        songItem.className = 'liked-song-item';
+        songItem.onclick = () => {
+          playVideo(song.videoId, song.title, song.artist, song.thumbnail);
+          playerView.style.display = 'block';
+          likedSongsView.style.display = 'none';
+        };
+        
+        songItem.innerHTML = `
+          <img src="${song.thumbnail}" class="liked-song-thumbnail">
+          <div class="liked-song-info">
+            <div class="liked-song-title">${song.title}</div>
+            <div class="liked-song-artist">${song.artist}</div>
+          </div>
+        `;
+        
+        likedSongsList.appendChild(songItem);
+      });
+    }
+    
+    // Load liked songs from localStorage
+    function loadLikedSongs() {
+      const savedLikedSongs = localStorage.getItem('likedSongs');
+      if (savedLikedSongs) {
+        likedSongs = JSON.parse(savedLikedSongs);
+      }
+      
+      const savedPlayedSongs = localStorage.getItem('playedSongs');
+      if (savedPlayedSongs) {
+        playedSongs = JSON.parse(savedPlayedSongs);
       }
     }
     
@@ -665,16 +893,6 @@
         prevVideo.snippet.channelTitle,
         prevVideo.snippet.thumbnails?.medium?.url || prevVideo.snippet.thumbnails?.default?.url
       );
-    }
-    
-    function toggleShuffle() {
-      // Shuffle functionality would go here
-      console.log('Shuffle toggled');
-    }
-    
-    function toggleRepeat() {
-      // Repeat functionality would go here
-      console.log('Repeat toggled');
     }
     
     // Progress tracking
