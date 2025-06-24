@@ -309,6 +309,32 @@
       height: 0;
       opacity: 0;
     }
+    
+    /* Tap to play/pause overlay */
+    .tap-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 3;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      pointer-events: none;
+    }
+    
+    .tap-icon {
+      font-size: 80px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      color: white;
+      text-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+    
+    .show-tap-icon {
+      opacity: 1;
+    }
   </style>
 </head>
 <body>
@@ -593,6 +619,10 @@
       songDiv.innerHTML = `
         <div class="overlay"></div>
         
+        <div class="tap-overlay" id="tapOverlay">
+          <div class="tap-icon" id="tapIcon">${isPlaying ? '❚❚' : '▶'}</div>
+        </div>
+        
         <div class="song-info">
           <h1 class="song-title">${title}</h1>
           <p class="song-artist">${artist}</p>
@@ -613,7 +643,7 @@
           <div class="controls">
             <button class="control-btn" onclick="toggleShuffle()">🔀</button>
             <button class="control-btn" onclick="playPreviousVideo()">⏮</button>
-            <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
+            <button class="play-btn" id="playBtn" onclick="togglePlay()">${isPlaying ? '❚❚' : '▶'}</button>
             <button class="control-btn" onclick="playNextVideo()">⏭</button>
             <button class="control-btn" onclick="toggleRepeat()">🔁</button>
           </div>
@@ -623,11 +653,36 @@
       resultsContainer.appendChild(songDiv);
       closeSearch();
       
+      // Add tap event listener for play/pause
+      const tapOverlay = document.getElementById('tapOverlay');
+      tapOverlay.addEventListener('click', function(e) {
+        // Only trigger if the click is not on the progress bar or controls
+        if (!e.target.closest('.progress-container') && !e.target.closest('.controls')) {
+          togglePlayWithAnimation();
+        }
+      });
+      
       // Load and play the video
       if (player) {
         player.loadVideoById(videoId);
-        player.playVideo();
+        if (isPlaying) {
+          player.playVideo();
+        }
       }
+    }
+    
+    function togglePlayWithAnimation() {
+      const tapIcon = document.getElementById('tapIcon');
+      if (tapIcon) {
+        tapIcon.classList.add('show-tap-icon');
+        tapIcon.textContent = isPlaying ? '▶' : '❚❚';
+        
+        setTimeout(() => {
+          tapIcon.classList.remove('show-tap-icon');
+        }, 300);
+      }
+      
+      togglePlay();
     }
     
     // Player control functions
@@ -638,6 +693,12 @@
         player.pauseVideo();
       } else {
         player.playVideo();
+      }
+      
+      // Update play button in controls
+      const playBtn = document.getElementById('playBtn');
+      if (playBtn) {
+        playBtn.textContent = isPlaying ? '❚❚' : '▶';
       }
     }
     
