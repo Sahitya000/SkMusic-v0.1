@@ -4,9 +4,534 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>SkMusic</title>
-  <link rel="stylesheet" href="style.css">
+  <style>
+    :root {
+      --primary: #1ed760;
+      --secondary: #535353;
+      --dark: #121212;
+      --light-dark: #212121;
+      --text: #ffffff;
+      --text-secondary: #b3b3b3;
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      margin: 0;
+      background: var(--dark);
+      font-family: 'Segoe UI', sans-serif;
+      color: var(--text);
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      height: 100vh;
+      touch-action: pan-y;
+    }
+    
+    /* Search Modal */
+    .search-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: var(--dark);
+      z-index: 200;
+      padding: 20px;
+      display: none;
+      overflow-y: auto;
+    }
+    
+    .search-container {
+      width: 100%;
+      position: sticky;
+      top: 0;
+      background: var(--dark);
+      padding-bottom: 10px;
+      z-index: 210;
+    }
+    
+    .search-input {
+      width: 100%;
+      padding: 15px 20px;
+      font-size: 16px;
+      border-radius: 25px;
+      border: none;
+      background: var(--light-dark);
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    
+    .close-search {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 24px;
+      color: var(--text);
+      cursor: pointer;
+      z-index: 220;
+    }
+    
+    /* Main Content */
+    .container {
+      padding-top: 20px;
+    }
+    
+    /* Song Cards */
+    .song {
+      height: 100vh;
+      scroll-snap-align: start;
+      position: relative;
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 20px;
+      display: none;
+    }
+    
+    .song.active {
+      display: flex;
+    }
+    
+    .song-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      filter: blur(20px) brightness(0.6);
+      z-index: 0;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    
+    .song-bg.active {
+      opacity: 1;
+    }
+    
+    .song-thumbnail {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 250px;
+      height: 250px;
+      border-radius: 10px;
+      object-fit: cover;
+      z-index: 2;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    
+    .song-thumbnail.active {
+      opacity: 1;
+    }
+    
+    .overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.9), rgba(0,0,0,0.4));
+      z-index: 1;
+    }
+    
+    .song-info {
+      position: relative;
+      z-index: 2;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+    
+    .song-title {
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .song-artist {
+      font-size: 16px;
+      color: var(--text-secondary);
+    }
+    
+    /* Player Controls */
+    .player-controls {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+    
+    .progress-container {
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    
+    .progress-bar {
+      width: 100%;
+      height: 4px;
+      background: var(--secondary);
+      border-radius: 2px;
+      margin-bottom: 5px;
+      overflow: hidden;
+      position: relative;
+      cursor: pointer;
+    }
+    
+    .progress {
+      height: 100%;
+      background: var(--primary);
+      width: 0%;
+      position: relative;
+    }
+    
+    .progress-handle {
+      position: absolute;
+      right: -6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 12px;
+      background: var(--primary);
+      border-radius: 50%;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    
+    .progress-bar:hover .progress-handle {
+      opacity: 1;
+    }
+    
+    .time {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 0 20px;
+    }
+    
+    .control-btn {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 10px;
+    }
+    
+    .play-btn {
+      background: var(--primary);
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 24px;
+      cursor: pointer;
+      border: none;
+      color: black;
+    }
+    
+    /* Bottom Navigation */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-around;
+      padding: 15px 0;
+      background: var(--light-dark);
+      z-index: 100;
+    }
+    
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+    }
+    
+    .nav-item.active {
+      color: var(--primary);
+    }
+    
+    .nav-icon {
+      font-size: 20px;
+      margin-bottom: 5px;
+    }
+    
+    /* Loading Spinner */
+    .loader {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 5px solid var(--secondary);
+      border-top: 5px solid var(--primary);
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      z-index: 1000;
+    }
+    
+    @keyframes spin {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+    
+    /* Search Results */
+    .search-result-item {
+      display: flex;
+      padding: 12px;
+      margin-bottom: 10px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 8px;
+      cursor: pointer;
+      align-items: center;
+      transition: background 0.2s;
+    }
+    
+    .search-result-item:hover {
+      background: rgba(255,255,255,0.2);
+    }
+    
+    .search-result-thumbnail {
+      width: 60px;
+      height: 60px;
+      border-radius: 4px;
+      margin-right: 12px;
+      object-fit: cover;
+    }
+    
+    .search-result-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .search-result-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .search-result-channel {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    /* Hidden YouTube Player */
+    #youtube-player {
+      position: absolute;
+      width: 0;
+      height: 0;
+      opacity: 0;
+    }
+    
+    /* Tap to play/pause overlay */
+    .tap-overlay {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 250px;
+      height: 250px;
+      z-index: 3;
+      border-radius: 10px;
+    }
+    
+    .tap-icon-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .tap-icon {
+      font-size: 80px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      color: white;
+      text-shadow: 0 0 10px rgba(0,0,0,0.5);
+      pointer-events: none;
+    }
+    
+    .show-tap-icon {
+      opacity: 1;
+    }
+    
+    /* Draggable progress handle */
+    .progress-handle.dragging {
+      opacity: 1;
+      transform: translateY(-50%) scale(1.2);
+    }
+    
+    /* Home screen content */
+    .home-content {
+      padding: 20px;
+    }
+    
+    .section-title {
+      font-size: 20px;
+      margin-bottom: 15px;
+      color: var(--text);
+    }
+    
+    .recent-songs {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    
+    .song-card {
+      background: var(--light-dark);
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    
+    .song-card:hover {
+      transform: scale(1.02);
+    }
+    
+    .song-card-thumbnail {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+    }
+    
+    .song-card-info {
+      padding: 10px;
+    }
+    
+    .song-card-title {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .song-card-artist {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    /* Instagram-style like button */
+    .like-container {
+      position: fixed;
+      right: 20px;
+      bottom: 100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      z-index: 10;
+      display: none;
+    }
+    
+    .like-btn {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 24px;
+      cursor: pointer;
+      margin: 10px 0;
+      transition: transform 0.2s;
+    }
+    
+    .like-btn.active {
+      color: var(--primary);
+    }
+    
+    .like-btn:active {
+      transform: scale(1.2);
+    }
+    
+    .like-count {
+      color: var(--text);
+      font-size: 12px;
+      margin-top: 5px;
+    }
+    
+    /* Library/Favorites screen */
+    .library-content {
+      padding: 20px;
+      display: none;
+    }
+    
+    .favorites-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+    
+    /* Settings screen */
+    .settings-content {
+      padding: 20px;
+      display: none;
+    }
+    
+    .settings-item {
+      padding: 15px 0;
+      border-bottom: 1px solid var(--secondary);
+    }
+    
+    .settings-title {
+      font-size: 16px;
+      margin-bottom: 5px;
+    }
+    
+    .settings-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    /* Welcome message */
+    .welcome-message {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-secondary);
+    }
+    
+    /* Background audio player */
+    .background-player {
+      display: none;
+    }
+  </style>
 </head>
 <body>
+
   <div class="search-modal" id="searchModal">
     <div class="close-search" onclick="closeSearch()">✕</div>
     <div class="search-container">
@@ -34,10 +559,7 @@
     <!-- Player section (hidden by default) -->
     <div class="song" id="playerSection">
       <div class="song-bg" id="songBg"></div>
-      <div class="song-thumbnail-container">
-        <img class="song-thumbnail" id="songThumbnail">
-        <div class="visualizer" id="visualizer"></div>
-      </div>
+      <img class="song-thumbnail" id="songThumbnail">
       <div class="overlay"></div>
       <div class="tap-overlay" id="tapOverlay">
         <div class="tap-icon-container">
@@ -128,11 +650,138 @@
   
   <!-- Background Audio Player -->
   <audio id="backgroundAudio" class="background-player" loop></audio>
-  
-  <!-- Audio Context for Visualizer -->
-  <audio id="visualizerAudio" class="background-player"></audio>
 
-  <script src="https://www.youtube.com/iframe_api"></script>
-  <script src="script.js"></script>
-</body>
-</html>
+  <script>
+    // Replace with your actual YouTube API key
+    const API_KEY = 'AIzaSyAz3LnhWy_Ciz6I74NvUVfb3J4XSj8Jw_M';
+    let player;
+    let currentVideoId = '';
+    let currentVideoIndex = -1;
+    let searchResults = [];
+    let isPlaying = false;
+    let progressInterval;
+    let touchStartY = 0;
+    let searchDebounceTimer;
+    let isDraggingProgress = false;
+    let lastPlayedIndex = -1;
+    let recentSongs = JSON.parse(localStorage.getItem('recentSongs')) || [];
+    let favoriteSongs = JSON.parse(localStorage.getItem('favoriteSongs')) || [];
+    let isShuffleOn = false;
+    let isRepeatOn = false;
+    let backgroundAudio = document.getElementById('backgroundAudio');
+    
+    // DOM Elements
+    const searchModal = document.getElementById('searchModal');
+    const searchInput = document.getElementById('searchInput');
+    const searchResultsDiv = document.getElementById('searchResults');
+    const resultsContainer = document.getElementById('results');
+    const loader = document.getElementById('loader');
+    const homeContent = document.getElementById('homeContent');
+    const libraryContent = document.getElementById('libraryContent');
+    const settingsContent = document.getElementById('settingsContent');
+    const recentSongsDiv = document.getElementById('recentSongs');
+    const favoritesList = document.getElementById('favoritesList');
+    const playerSection = document.getElementById('playerSection');
+    const likeBtn = document.getElementById('likeBtn');
+    const likeCount = document.getElementById('likeCount');
+    const nowPlayingTitle = document.getElementById('nowPlayingTitle');
+    const nowPlayingArtist = document.getElementById('nowPlayingArtist');
+    const likeContainer = document.getElementById('likeContainer');
+    const songBg = document.getElementById('songBg');
+    const songThumbnail = document.getElementById('songThumbnail');
+    const tapOverlay = document.getElementById('tapOverlay');
+    const tapIcon = document.getElementById('tapIcon');
+    
+    // Initialize the app when DOM is loaded
+    document.addEventListener('DOMContentLoaded', function() {
+      loadYouTubeAPI();
+      document.addEventListener('touchstart', handleTouchStart, false);
+      document.addEventListener('touchend', handleTouchEnd, false);
+      searchInput.addEventListener('input', handleSearchInput);
+      searchInput.addEventListener('keypress', handleSearchKeyPress);
+      updateRecentSongsDisplay();
+      updateFavoritesDisplay();
+      
+      // Setup tap to play/pause
+      tapOverlay.addEventListener('click', function(e) {
+        togglePlayWithAnimation();
+      });
+      
+      // Start background music
+      playBackgroundMusic();
+    });
+    
+    function playBackgroundMusic() {
+      // You can replace this with your background music URL
+      backgroundAudio.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+      backgroundAudio.volume = 0.3; // Lower volume for background music
+      backgroundAudio.play().catch(e => console.log('Background audio play failed:', e));
+    }
+    
+    function loadYouTubeAPI() {
+      const tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      const firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+    }
+    
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('youtube-player', {
+        height: '0',
+        width: '0',
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    }
+    
+    function onPlayerReady(event) {
+      console.log('YouTube player ready');
+    }
+    
+    function onPlayerStateChange(event) {
+      const timeDisplay = document.getElementById('timeDisplay');
+      const progressBar = document.getElementById('progressBar');
+      const playBtn = document.getElementById('playBtn');
+      
+      switch(event.data) {
+        case YT.PlayerState.PLAYING:
+          isPlaying = true;
+          if (playBtn) playBtn.textContent = '❚❚';
+          startProgressTracking();
+          break;
+          
+        case YT.PlayerState.PAUSED:
+          isPlaying = false;
+          if (playBtn) playBtn.textContent = '▶';
+          if (!isDraggingProgress) {
+            clearInterval(progressInterval);
+          }
+          break;
+          
+        case YT.PlayerState.ENDED:
+          isPlaying = false;
+          if (playBtn) playBtn.textContent = '▶';
+          clearInterval(progressInterval);
+          if (isRepeatOn) {
+            player.playVideo();
+          } else {
+            playNextVideo();
+          }
+          break;
+      }
+      
+      if (event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.PAUSED) {
+        const duration = player.getDuration();
+        if (timeDisplay) {
+          timeDisplay.innerHTML = `
+            <span>${formatTime(player.getCurrentTime())}</span>
+            <span>${formatTime(duration)}</span>
+          `;
+        }
+      }
+    }
+    
+    function handleSearchInput(e) {
+      clearTimeou
