@@ -335,6 +335,12 @@
     .show-tap-icon {
       opacity: 1;
     }
+    
+    /* Draggable progress handle */
+    .progress-handle.dragging {
+      opacity: 1;
+      transform: translateY(-50%) scale(1.2);
+    }
   </style>
 </head>
 <body>
@@ -408,12 +414,14 @@
     const API_KEY = 'AIzaSyAz3LnhWy_Ciz6I74NvUVfb3J4XSj8Jw_M';
     let player;
     let currentVideoId = '';
-    let currentVideoIndex = 0;
+    let currentVideoIndex = -1; // Initialize to -1 to indicate no song is playing
     let searchResults = [];
     let isPlaying = false;
     let progressInterval;
     let touchStartY = 0;
     let searchDebounceTimer;
+    let isDraggingProgress = false;
+    let lastPlayedIndex = -1; // To track the last played song
     
     // DOM Elements
     const searchModal = document.getElementById('searchModal');
@@ -475,7 +483,9 @@
         case YT.PlayerState.PAUSED:
           isPlaying = false;
           if (playBtn) playBtn.textContent = '▶';
-          clearInterval(progressInterval);
+          if (!isDraggingProgress) {
+            clearInterval(progressInterval);
+          }
           break;
           
         case YT.PlayerState.ENDED:
@@ -607,7 +617,13 @@
     
     // Video playback functions
     function playVideo(videoId, title, artist, thumbnail) {
+      // Don't replay the same song if it's already playing
+      if (lastPlayedIndex === currentVideoIndex && currentVideoId === videoId) {
+        return;
+      }
+      
       currentVideoId = videoId;
+      lastPlayedIndex = currentVideoIndex;
       
       // Update the UI
       resultsContainer.innerHTML = '';
@@ -632,7 +648,7 @@
           <div class="progress-container">
             <div class="progress-bar" id="progressBarContainer">
               <div class="progress" id="progressBar"></div>
-              <div class="progress-handle"></div>
+              <div class="progress-handle" id="progressHandle"></div>
             </div>
             <div class="time" id="timeDisplay">
               <span>0:00</span>
@@ -655,9 +671,14 @@
       
       // Add tap event listener for play/pause
       const tapOverlay = document.getElementById('tapOverlay');
-      tapOverlay.addEventListener('click', function() {
-        togglePlayWithAnimation();
-      });
+      if (tapOverlay) {
+        tapOverlay.addEventListener('click', function() {
+          togglePlayWithAnimation();
+        });
+      }
+      
+      // Set up progress bar dragging
+      setupProgressBarDrag();
       
       // Load and play the video
       if (player) {
@@ -666,6 +687,96 @@
           player.playVideo();
         }
       }
+    }
+    
+    function setupProgressBarDrag() {
+      const progressBarContainer = document.getElementById('progressBarContainer');
+      const progressBar = document.getElementById('progressBar');
+      const progressHandle = document.getElementById('progressHandle');
+      const timeDisplay = document.getElementById('timeDisplay');
+      
+      if (!progressBarContainer || !progressBar || !progressHandle) return;
+      
+      let isDragging = false;
+      
+      // Mouse/touch down event
+      const handleDown = (e) => {
+        isDragging = true;
+        isDraggingProgress = true;
+        progressHandle.classList.add('dragging');
+        updateProgress(e);
+      };
+      
+      // Mouse/touch move event
+      const handleMove = (e) => {
+        if (!isDragging) return;
+        updateProgress(e);
+      };
+      
+      // Mouse/touch up event
+      const handleUp = (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        isDraggingProgress = false;
+        progressHandle.classList.remove('dragging');
+        updateProgress(e, true); // Seek to position
+      };
+      
+      // Update progress bar position
+      const updateProgress = (e, seek = false) => {
+        const rect = progressBarContainer.getBoundingClientRect();
+        let position;
+        
+        // Get position based on input type (mouse or touch)
+        if (e.type.includes('touch')) {
+          position = e.touches[0].clientX - rect.left;
+        } else {
+          position = e.clientX - rect.left;
+        }
+        
+        // Calculate percentage (0-1)
+        let percent = position / rect.width;
+        percent = Math.max(0, Math.min(1, percent)); // Clamp between 0 and 1
+        
+        // Update progress bar UI
+        progressBar.style.width = `${percent * 100}%`;
+        
+        // Update time display
+        if (player && player.getDuration) {
+          const duration = player.getDuration();
+          const currentTime = duration * percent;
+          
+          if (timeDisplay) {
+            timeDisplay.innerHTML = `
+              <span>${formatTime(currentTime)}</span>
+              <span>${formatTime(duration)}</span>
+            `;
+          }
+          
+          // Seek to position if requested
+          if (seek) {
+            player.seekTo(currentTime, true);
+            if (isPlaying) {
+              player.playVideo();
+            }
+          }
+        }
+      };
+      
+      // Add event listeners
+      progressBarContainer.addEventListener('mousedown', handleDown);
+      progressBarContainer.addEventListener('mousemove', handleMove);
+      document.addEventListener('mouseup', handleUp);
+      
+      progressBarContainer.addEventListener('touchstart', handleDown);
+      progressBarContainer.addEventListener('touchmove', handleMove);
+      document.addEventListener('touchend', handleUp);
+      
+      // Click to seek
+      progressBarContainer.addEventListener('click', (e) => {
+        if (isDragging) return;
+        updateProgress(e, true);
+      });
     }
     
     function togglePlayWithAnimation() {
@@ -703,6 +814,11 @@
     function playNextVideo() {
       if (searchResults.length === 0) return;
       
+      // Don't play the same song again if we're at the end of the list
+      if (currentVideoIndex === searchResults.length - 1) {
+        return;
+      }
+      
       currentVideoIndex = (currentVideoIndex + 1) % searchResults.length;
       const nextVideo = searchResults[currentVideoIndex];
       playVideo(
@@ -715,6 +831,11 @@
     
     function playPreviousVideo() {
       if (searchResults.length === 0) return;
+      
+      // Don't play the same song again if we're at the start of the list
+      if (currentVideoIndex === 0) {
+        return;
+      }
       
       currentVideoIndex = (currentVideoIndex - 1 + searchResults.length) % searchResults.length;
       const prevVideo = searchResults[currentVideoIndex];
@@ -742,11 +863,10 @@
       
       const progressBar = document.getElementById('progressBar');
       const timeDisplay = document.getElementById('timeDisplay');
-      const progressBarContainer = document.getElementById('progressBarContainer');
       
       // Update progress bar periodically
       progressInterval = setInterval(() => {
-        if (player && player.getCurrentTime) {
+        if (player && player.getCurrentTime && !isDraggingProgress) {
           const currentTime = player.getCurrentTime();
           const duration = player.getDuration();
           const progressPercent = (currentTime / duration) * 100;
@@ -760,20 +880,6 @@
           }
         }
       }, 1000);
-      
-      // Add click handler for seeking
-      if (progressBarContainer) {
-        progressBarContainer.addEventListener('click', (e) => {
-          if (!player || !player.getDuration) return;
-          
-          const rect = progressBarContainer.getBoundingClientRect();
-          const clickPosition = (e.clientX - rect.left) / rect.width;
-          const duration = player.getDuration();
-          const seekTime = duration * clickPosition;
-          
-          player.seekTo(seekTime, true);
-        });
-      }
     }
     
     // Touch events for swipe navigation
