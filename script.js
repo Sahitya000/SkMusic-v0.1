@@ -527,7 +527,276 @@ function toggleFavorite() {
         }, 200);
     }
     
-    // Save to localStorage
-    localStorage.setItem('favoriteSongs', JSON.stringify(favoriteSongs));
+  // Save to localStorage
+      localStorage.setItem('favoriteSongs', JSON.stringify(favoriteSongs));
+      
+      // Update favorites display if we're on that tab
+      if (libraryContent.style.display === 'block') {
+        updateFavoritesDisplay();
+      }
+    }
     
-    // Update favorites display if we
+    function updateFavoritesDisplay() {
+      favoritesList.innerHTML = '';
+      
+      if (favoriteSongs.length === 0) {
+        favoritesList.innerHTML = '<div style="color: var(--text-secondary); grid-column: span 2; text-align: center;">No favorite songs yet</div>';
+        return;
+      }
+      
+      favoriteSongs.forEach(song => {
+        const songCard = document.createElement('div');
+        songCard.className = 'song-card';
+        songCard.onclick = () => {
+          // Update searchResults to include this song if it's not already there
+          const existsInSearch = searchResults.some(item => item.id.videoId === song.videoId);
+          if (!existsInSearch) {
+            searchResults = [{
+              id: { videoId: song.videoId },
+              snippet: {
+                title: song.title,
+                channelTitle: song.artist,
+                thumbnails: {
+                  default: { url: song.thumbnail },
+                  medium: { url: song.thumbnail }
+                }
+              }
+            }, ...searchResults];
+          }
+          
+          // Find the index in searchResults
+          currentVideoIndex = searchResults.findIndex(item => item.id.videoId === song.videoId);
+          playVideo(song.videoId, song.title, song.artist, song.thumbnail);
+        };
+        
+        songCard.innerHTML = `
+          <img src="${song.thumbnail}" class="song-card-thumbnail">
+          <div class="song-card-info">
+            <div class="song-card-title">${song.title}</div>
+            <div class="song-card-artist">${song.artist}</div>
+          </div>
+        `;
+        
+        favoritesList.appendChild(songCard);
+      });
+    }
+    
+    function setupProgressBarDrag() {
+      const progressBarContainer = document.getElementById('progressBarContainer');
+      const progressBar = document.getElementById('progressBar');
+      const progressHandle = document.getElementById('progressHandle');
+      const timeDisplay = document.getElementById('timeDisplay');
+      
+      if (!progressBarContainer || !progressBar || !progressHandle) return;
+      
+      let isDragging = false;
+      
+      const handleDown = (e) => {
+        e.stopPropagation();
+        // Only start dragging if clicking on the handle
+        if (e.target === progressHandle) {
+          isDragging = true;
+          isDraggingProgress = true;
+          progressHandle.classList.add('dragging');
+        }
+        updateProgress(e, true); // Seek immediately on click
+      };
+      
+      const handleMove = (e) => {
+        if (!isDragging) return;
+        e.stopPropagation();
+        updateProgress(e);
+      };
+      
+      const handleUp = (e) => {
+        if (!isDragging) return;
+        e.stopPropagation();
+        isDragging = false;
+        isDraggingProgress = false;
+        progressHandle.classList.remove('dragging');
+        updateProgress(e, true);
+      };
+      
+      const updateProgress = (e, seek = false) => {
+        const rect = progressBarContainer.getBoundingClientRect();
+        let position;
+        
+        if (e.type.includes('touch')) {
+          position = e.touches[0].clientX - rect.left;
+        } else {
+          position = e.clientX - rect.left;
+        }
+        
+        let percent = position / rect.width;
+        percent = Math.max(0, Math.min(1, percent));
+        
+        progressBar.style.width = `${percent * 100}%`;
+        
+        if (player && player.getDuration) {
+          const duration = player.getDuration();
+          const currentTime = duration * percent;
+          
+          if (timeDisplay) {
+            timeDisplay.innerHTML = `
+              <span>${formatTime(currentTime)}</span>
+              <span>${formatTime(duration)}</span>
+            `;
+          }
+          
+          if (seek) {
+            player.seekTo(currentTime, true);
+            if (isPlaying) {
+              player.playVideo();
+            }
+          }
+        }
+      };
+      
+      progressBarContainer.addEventListener('mousedown', handleDown);
+      document.addEventListener('mousemove', handleMove);
+      document.addEventListener('mouseup', handleUp);
+      
+      progressBarContainer.addEventListener('touchstart', handleDown);
+      document.addEventListener('touchmove', handleMove);
+      document.addEventListener('touchend', handleUp);
+    }
+    
+    function togglePlayWithAnimation() {
+      tapIcon.textContent = isPlaying ? '▶' : '❚❚';
+      tapIcon.classList.add('show-tap-icon');
+      
+      setTimeout(() => {
+        tapIcon.classList.remove('show-tap-icon');
+      }, 300);
+      
+      togglePlay();
+      
+      const playBtn = document.getElementById('playBtn');
+      if (playBtn) {
+        playBtn.textContent = isPlaying ? '❚❚' : '▶';
+      }
+    }
+    
+    function togglePlay() {
+      if (!player) return;
+      
+      if (isPlaying) {
+        player.pauseVideo();
+      } else {
+        player.playVideo();
+      }
+    }
+    
+    function playNextVideo() {
+      if (searchResults.length === 0) return;
+      
+      let nextIndex;
+      if (isShuffleOn) {
+        nextIndex = Math.floor(Math.random() * searchResults.length);
+      } else {
+        nextIndex = (currentVideoIndex + 1) % searchResults.length;
+      }
+      
+      const nextVideo = searchResults[nextIndex];
+      if (!nextVideo) return;
+      
+      currentVideoIndex = nextIndex;
+      playVideo(
+        nextVideo.id.videoId,
+        nextVideo.snippet.title,
+        nextVideo.snippet.channelTitle,
+        nextVideo.snippet.thumbnails?.medium?.url || nextVideo.snippet.thumbnails?.default?.url
+      );
+    }
+    
+    function playPreviousVideo() {
+      if (searchResults.length === 0) return;
+      
+      let prevIndex;
+      if (isShuffleOn) {
+        prevIndex = Math.floor(Math.random() * searchResults.length);
+      } else {
+        prevIndex = (currentVideoIndex - 1 + searchResults.length) % searchResults.length;
+      }
+      
+      const prevVideo = searchResults[prevIndex];
+      if (!prevVideo) return;
+      
+      currentVideoIndex = prevIndex;
+      playVideo(
+        prevVideo.id.videoId,
+        prevVideo.snippet.title,
+        prevVideo.snippet.channelTitle,
+        prevVideo.snippet.thumbnails?.medium?.url || prevVideo.snippet.thumbnails?.default?.url
+      );
+    }
+    
+    function toggleShuffle() {
+      isShuffleOn = !isShuffleOn;
+      console.log('Shuffle:', isShuffleOn ? 'ON' : 'OFF');
+    }
+    
+    function toggleRepeat() {
+      isRepeatOn = !isRepeatOn;
+      console.log('Repeat:', isRepeatOn ? 'ON' : 'OFF');
+    }
+    
+    function startProgressTracking() {
+      clearInterval(progressInterval);
+      
+      const progressBar = document.getElementById('progressBar');
+      const timeDisplay = document.getElementById('timeDisplay');
+      
+      progressInterval = setInterval(() => {
+        if (player && player.getCurrentTime && !isDraggingProgress) {
+          const currentTime = player.getCurrentTime();
+          const duration = player.getDuration();
+          const progressPercent = (currentTime / duration) * 100;
+          
+          if (progressBar) progressBar.style.width = `${progressPercent}%`;
+          if (timeDisplay) {
+            timeDisplay.innerHTML = `
+              <span>${formatTime(currentTime)}</span>
+              <span>${formatTime(duration)}</span>
+            `;
+          }
+        }
+      }, 1000);
+    }
+    
+    function handleTouchStart(e) {
+      touchStartY = e.touches[0].clientY;
+    }
+    
+    function handleTouchEnd(e) {
+      if (!touchStartY) return;
+      
+      const touchEndY = e.changedTouches[0].clientY;
+      const diffY = touchStartY - touchEndY;
+      
+      if (Math.abs(diffY) > 50) {
+        if (diffY > 0) {
+          playNextVideo();
+        } else {
+          playPreviousVideo();
+        }
+      }
+      
+      touchStartY = 0;
+    }
+    
+    function formatTime(seconds) {
+      if (isNaN(seconds)) return "0:00";
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+    
+    function showLoader() {
+      loader.style.display = 'block';
+    }
+    
+    function hideLoader() {
+      loader.style.display = 'none';
+    }
+  </script>
