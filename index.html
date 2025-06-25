@@ -91,6 +91,11 @@
       flex-direction: column;
       justify-content: flex-end;
       padding: 20px;
+      display: none; /* Hidden by default */
+    }
+    
+    .song.active {
+      display: flex; /* Show when active */
     }
     
     .overlay {
@@ -400,20 +405,39 @@
       color: var(--text-secondary);
     }
     
-    .favorite-btn {
-      background: none;
-      border: none;
-      color: var(--text-secondary);
-      font-size: 20px;
-      cursor: pointer;
-      position: absolute;
-      top: 20px;
+    /* Instagram-style like button */
+    .like-container {
+      position: fixed;
       right: 20px;
+      bottom: 100px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       z-index: 10;
     }
     
-    .favorite-btn.active {
+    .like-btn {
+      background: none;
+      border: none;
+      color: var(--text);
+      font-size: 24px;
+      cursor: pointer;
+      margin: 10px 0;
+      transition: transform 0.2s;
+    }
+    
+    .like-btn.active {
       color: var(--primary);
+    }
+    
+    .like-btn:active {
+      transform: scale(1.2);
+    }
+    
+    .like-count {
+      color: var(--text);
+      font-size: 12px;
+      margin-top: 5px;
     }
     
     /* Library/Favorites screen */
@@ -446,6 +470,13 @@
       font-size: 12px;
       color: var(--text-secondary);
     }
+    
+    /* Welcome message */
+    .welcome-message {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-secondary);
+    }
   </style>
 </head>
 <body>
@@ -468,35 +499,47 @@
         <!-- Recent songs will be added here -->
       </div>
       
-      <h2 class="section-title">Get Started</h2>
-      <div class="song" style="background-image: url('https://i.ytimg.com/vi/JGwWNGJdvx8/maxresdefault.jpg')">
-        <div class="overlay"></div>
-        
-        <div class="song-info">
-          <h1 class="song-title">Welcome to Music Player</h1>
-          <p class="song-artist">Search for music to begin</p>
+      <div class="welcome-message">
+        <h2>Welcome to SkMusic</h2>
+        <p>Search for music to begin playing</p>
+      </div>
+    </div>
+    
+    <!-- Player section (hidden by default) -->
+    <div class="song" id="playerSection">
+      <div class="overlay"></div>
+      
+      <div class="song-info">
+        <h1 class="song-title" id="nowPlayingTitle">Song Title</h1>
+        <p class="song-artist" id="nowPlayingArtist">Artist Name</p>
+      </div>
+      
+      <div class="player-controls">
+        <div class="progress-container">
+          <div class="progress-bar" id="progressBarContainer">
+            <div class="progress" id="progressBar"></div>
+            <div class="progress-handle" id="progressHandle"></div>
+          </div>
+          <div class="time" id="timeDisplay">
+            <span>0:00</span>
+            <span>0:00</span>
+          </div>
         </div>
         
-        <div class="player-controls">
-          <div class="progress-container">
-            <div class="progress-bar">
-              <div class="progress"></div>
-            </div>
-            <div class="time">
-              <span>0:00</span>
-              <span>0:00</span>
-            </div>
-          </div>
-          
-          <div class="controls">
-            <button class="control-btn">🔀</button>
-            <button class="control-btn">⏮</button>
-            <button class="play-btn">▶</button>
-            <button class="control-btn">⏭</button>
-            <button class="control-btn">🔁</button>
-          </div>
+        <div class="controls">
+          <button class="control-btn">🔀</button>
+          <button class="control-btn" onclick="playPreviousVideo()">⏮</button>
+          <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
+          <button class="control-btn" onclick="playNextVideo()">⏭</button>
+          <button class="control-btn">🔁</button>
         </div>
       </div>
+    </div>
+    
+    <!-- Instagram-style like button container -->
+    <div class="like-container" id="likeContainer">
+      <button class="like-btn" id="likeBtn" onclick="toggleFavorite()">🤍</button>
+      <div class="like-count" id="likeCount">0</div>
     </div>
     
     <!-- Library content (hidden by default) -->
@@ -574,6 +617,11 @@
     const settingsContent = document.getElementById('settingsContent');
     const recentSongsDiv = document.getElementById('recentSongs');
     const favoritesList = document.getElementById('favoritesList');
+    const playerSection = document.getElementById('playerSection');
+    const likeBtn = document.getElementById('likeBtn');
+    const likeCount = document.getElementById('likeCount');
+    const nowPlayingTitle = document.getElementById('nowPlayingTitle');
+    const nowPlayingArtist = document.getElementById('nowPlayingArtist');
     
     // Initialize the app when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
@@ -584,6 +632,10 @@
       searchInput.addEventListener('keypress', handleSearchKeyPress);
       updateRecentSongsDisplay();
       updateFavoritesDisplay();
+      
+      // Hide player and like button initially
+      playerSection.style.display = 'none';
+      document.getElementById('likeContainer').style.display = 'none';
     });
     
     function loadYouTubeAPI() {
@@ -609,9 +661,9 @@
     }
     
     function onPlayerStateChange(event) {
-      const timeDisplay = document.querySelector('.time');
-      const progressBar = document.querySelector('.progress');
-      const playBtn = document.querySelector('.play-btn');
+      const timeDisplay = document.getElementById('timeDisplay');
+      const progressBar = document.getElementById('progressBar');
+      const playBtn = document.getElementById('playBtn');
       
       switch(event.data) {
         case YT.PlayerState.PLAYING:
@@ -679,6 +731,8 @@
       homeContent.style.display = 'none';
       libraryContent.style.display = 'none';
       settingsContent.style.display = 'none';
+      playerSection.style.display = 'none';
+      document.getElementById('likeContainer').style.display = 'none';
       
       // Show the selected tab content
       if (tab === 'home') {
@@ -776,69 +830,22 @@
         thumbnail
       });
       
-      // Clear the container and show the player
-      resultsContainer.innerHTML = '';
+      // Update the player section
+      playerSection.style.backgroundImage = `url(${thumbnail})`;
+      nowPlayingTitle.textContent = title;
+      nowPlayingArtist.textContent = artist;
+      
+      // Show the player and hide other content
       homeContent.style.display = 'none';
       libraryContent.style.display = 'none';
       settingsContent.style.display = 'none';
+      playerSection.style.display = 'flex';
       
-      const songDiv = document.createElement('div');
-      songDiv.className = 'song';
-      songDiv.style.backgroundImage = `url(${thumbnail})`;
+      // Update like button
+      updateLikeButton();
       
-      // Check if this song is a favorite
-      const isFavorite = favoriteSongs.some(song => song.videoId === videoId);
-      
-      songDiv.innerHTML = `
-        <div class="overlay"></div>
-        
-        <button class="favorite-btn ${isFavorite ? 'active' : ''}" id="favoriteBtn" onclick="toggleFavorite(event)">
-          ${isFavorite ? '❤️' : '🤍'}
-        </button>
-        
-        <div class="tap-overlay" id="tapOverlay">
-          <div class="tap-icon" id="tapIcon">${isPlaying ? '❚❚' : '▶'}</div>
-        </div>
-        
-        <div class="song-info">
-          <h1 class="song-title">${title}</h1>
-          <p class="song-artist">${artist}</p>
-        </div>
-        
-        <div class="player-controls">
-          <div class="progress-container">
-            <div class="progress-bar" id="progressBarContainer">
-              <div class="progress" id="progressBar"></div>
-              <div class="progress-handle" id="progressHandle"></div>
-            </div>
-            <div class="time" id="timeDisplay">
-              <span>0:00</span>
-              <span>0:00</span>
-            </div>
-          </div>
-          
-          <div class="controls">
-            <button class="control-btn" onclick="toggleShuffle()">🔀</button>
-            <button class="control-btn" onclick="playPreviousVideo()">⏮</button>
-            <button class="play-btn" id="playBtn" onclick="togglePlay()">${isPlaying ? '❚❚' : '▶'}</button>
-            <button class="control-btn" onclick="playNextVideo()">⏭</button>
-            <button class="control-btn" onclick="toggleRepeat()">🔁</button>
-          </div>
-        </div>
-      `;
-      
-      resultsContainer.appendChild(songDiv);
-      closeSearch();
-      
-      const tapOverlay = document.getElementById('tapOverlay');
-      if (tapOverlay) {
-        tapOverlay.addEventListener('click', function(e) {
-          e.stopPropagation();
-          togglePlayWithAnimation();
-        });
-      }
-      
-      setupProgressBarDrag();
+      // Show like button
+      document.getElementById('likeContainer').style.display = 'flex';
       
       if (player) {
         player.loadVideoById(videoId);
@@ -846,6 +853,14 @@
           player.playVideo();
         }
       }
+      
+      setupProgressBarDrag();
+    }
+    
+    function updateLikeButton() {
+      const isFavorite = favoriteSongs.some(song => song.videoId === currentVideoId);
+      likeBtn.innerHTML = isFavorite ? '❤️' : '🤍';
+      likeBtn.classList.toggle('active', isFavorite);
     }
     
     function addToRecentSongs(song) {
@@ -894,16 +909,13 @@
       });
     }
     
-    function toggleFavorite(event) {
-      event.stopPropagation();
-      
-      const favoriteBtn = document.getElementById('favoriteBtn');
+    function toggleFavorite() {
       const videoId = currentVideoId;
       const currentSong = {
         videoId,
-        title: document.querySelector('.song-title')?.textContent || '',
-        artist: document.querySelector('.song-artist')?.textContent || '',
-        thumbnail: document.querySelector('.song')?.style.backgroundImage.replace('url("', '').replace('")', '') || ''
+        title: nowPlayingTitle.textContent,
+        artist: nowPlayingArtist.textContent,
+        thumbnail: playerSection.style.backgroundImage.replace('url("', '').replace('")', '')
       };
       
       // Check if already a favorite
@@ -912,13 +924,19 @@
       if (existingIndex >= 0) {
         // Remove from favorites
         favoriteSongs.splice(existingIndex, 1);
-        favoriteBtn.innerHTML = '🤍';
-        favoriteBtn.classList.remove('active');
+        likeBtn.innerHTML = '🤍';
+        likeBtn.classList.remove('active');
       } else {
         // Add to favorites
         favoriteSongs.push(currentSong);
-        favoriteBtn.innerHTML = '❤️';
-        favoriteBtn.classList.add('active');
+        likeBtn.innerHTML = '❤️';
+        likeBtn.classList.add('active');
+        
+        // Animation effect
+        likeBtn.style.transform = 'scale(1.2)';
+        setTimeout(() => {
+          likeBtn.style.transform = 'scale(1)';
+        }, 200);
       }
       
       // Save to localStorage
@@ -1037,26 +1055,6 @@
       document.addEventListener('touchend', handleUp);
     }
     
-    function togglePlayWithAnimation() {
-      const tapIcon = document.getElementById('tapIcon');
-      const playBtn = document.getElementById('playBtn');
-      
-      if (tapIcon) {
-        tapIcon.textContent = isPlaying ? '▶' : '❚❚';
-        tapIcon.classList.add('show-tap-icon');
-        
-        setTimeout(() => {
-          tapIcon.classList.remove('show-tap-icon');
-        }, 300);
-      }
-      
-      togglePlay();
-      
-      if (playBtn) {
-        playBtn.textContent = isPlaying ? '❚❚' : '▶';
-      }
-    }
-    
     function togglePlay() {
       if (!player) return;
       
@@ -1099,14 +1097,6 @@
         prevVideo.snippet.channelTitle,
         prevVideo.snippet.thumbnails?.medium?.url || prevVideo.snippet.thumbnails?.default?.url
       );
-    }
-    
-    function toggleShuffle() {
-      console.log('Shuffle toggled');
-    }
-    
-    function toggleRepeat() {
-      console.log('Repeat toggled');
     }
     
     function startProgressTracking() {
