@@ -164,6 +164,7 @@
       border-radius: 50%;
       opacity: 0;
       transition: opacity 0.2s;
+      pointer-events: none;
     }
     
     .progress-bar:hover .progress-handle {
@@ -414,14 +415,14 @@
     const API_KEY = 'AIzaSyAz3LnhWy_Ciz6I74NvUVfb3J4XSj8Jw_M';
     let player;
     let currentVideoId = '';
-    let currentVideoIndex = -1; // Initialize to -1 to indicate no song is playing
+    let currentVideoIndex = -1;
     let searchResults = [];
     let isPlaying = false;
     let progressInterval;
     let touchStartY = 0;
     let searchDebounceTimer;
     let isDraggingProgress = false;
-    let lastPlayedIndex = -1; // To track the last played song
+    let lastPlayedIndex = -1;
     
     // DOM Elements
     const searchModal = document.getElementById('searchModal');
@@ -432,19 +433,13 @@
     
     // Initialize the app when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
-      // Load YouTube IFrame API
       loadYouTubeAPI();
-      
-      // Set up touch events for swipe navigation
       document.addEventListener('touchstart', handleTouchStart, false);
       document.addEventListener('touchend', handleTouchEnd, false);
-      
-      // Set up search input event listeners
       searchInput.addEventListener('input', handleSearchInput);
       searchInput.addEventListener('keypress', handleSearchKeyPress);
     });
     
-    // Load YouTube IFrame API
     function loadYouTubeAPI() {
       const tag = document.createElement('script');
       tag.src = "https://www.youtube.com/iframe_api";
@@ -452,7 +447,6 @@
       firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
     }
     
-    // YouTube API ready callback
     function onYouTubeIframeAPIReady() {
       player = new YT.Player('youtube-player', {
         height: '0',
@@ -496,7 +490,6 @@
           break;
       }
       
-      // Update duration display
       if (event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.PAUSED) {
         const duration = player.getDuration();
         if (timeDisplay) {
@@ -508,15 +501,14 @@
       }
     }
     
-    // Search input handling
     function handleSearchInput(e) {
       clearTimeout(searchDebounceTimer);
       const query = e.target.value.trim();
       
-      if (query.length > 2) { // Only search if query has at least 3 characters
+      if (query.length > 2) {
         searchDebounceTimer = setTimeout(() => {
           searchYouTube(query);
-        }, 500); // 500ms debounce
+        }, 500);
       } else {
         searchResultsDiv.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Type at least 3 characters to search</div>';
       }
@@ -531,7 +523,6 @@
       }
     }
     
-    // Tab management
     function switchTab(tab) {
       document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
@@ -543,7 +534,6 @@
       }
     }
     
-    // Search modal functions
     function openSearch() {
       searchModal.style.display = 'block';
       searchInput.focus();
@@ -555,15 +545,11 @@
       searchResultsDiv.innerHTML = '';
     }
     
-    // YouTube Search API
     function searchYouTube(query) {
       showLoader();
-      
-      // Clear previous results
       searchResultsDiv.innerHTML = '';
       searchResults = [];
       
-      // Make API request
       fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query + ' music')}&type=video&key=${API_KEY}`)
         .then(response => {
           if (!response.ok) {
@@ -615,9 +601,7 @@
       });
     }
     
-    // Video playback functions
     function playVideo(videoId, title, artist, thumbnail) {
-      // Don't replay the same song if it's already playing
       if (lastPlayedIndex === currentVideoIndex && currentVideoId === videoId) {
         return;
       }
@@ -625,7 +609,6 @@
       currentVideoId = videoId;
       lastPlayedIndex = currentVideoIndex;
       
-      // Update the UI
       resultsContainer.innerHTML = '';
       
       const songDiv = document.createElement('div');
@@ -669,7 +652,6 @@
       resultsContainer.appendChild(songDiv);
       closeSearch();
       
-      // Add tap event listener for play/pause
       const tapOverlay = document.getElementById('tapOverlay');
       if (tapOverlay) {
         tapOverlay.addEventListener('click', function() {
@@ -677,10 +659,8 @@
         });
       }
       
-      // Set up progress bar dragging
       setupProgressBarDrag();
       
-      // Load and play the video
       if (player) {
         player.loadVideoById(videoId);
         if (isPlaying) {
@@ -699,49 +679,44 @@
       
       let isDragging = false;
       
-      // Mouse/touch down event
       const handleDown = (e) => {
-        isDragging = true;
-        isDraggingProgress = true;
-        progressHandle.classList.add('dragging');
-        updateProgress(e);
+        // Only start dragging if clicking on the handle
+        if (e.target === progressHandle) {
+          isDragging = true;
+          isDraggingProgress = true;
+          progressHandle.classList.add('dragging');
+        }
+        updateProgress(e, true); // Seek immediately on click
       };
       
-      // Mouse/touch move event
       const handleMove = (e) => {
         if (!isDragging) return;
         updateProgress(e);
       };
       
-      // Mouse/touch up event
       const handleUp = (e) => {
         if (!isDragging) return;
         isDragging = false;
         isDraggingProgress = false;
         progressHandle.classList.remove('dragging');
-        updateProgress(e, true); // Seek to position
+        updateProgress(e, true);
       };
       
-      // Update progress bar position
       const updateProgress = (e, seek = false) => {
         const rect = progressBarContainer.getBoundingClientRect();
         let position;
         
-        // Get position based on input type (mouse or touch)
         if (e.type.includes('touch')) {
           position = e.touches[0].clientX - rect.left;
         } else {
           position = e.clientX - rect.left;
         }
         
-        // Calculate percentage (0-1)
         let percent = position / rect.width;
-        percent = Math.max(0, Math.min(1, percent)); // Clamp between 0 and 1
+        percent = Math.max(0, Math.min(1, percent));
         
-        // Update progress bar UI
         progressBar.style.width = `${percent * 100}%`;
         
-        // Update time display
         if (player && player.getDuration) {
           const duration = player.getDuration();
           const currentTime = duration * percent;
@@ -753,7 +728,6 @@
             `;
           }
           
-          // Seek to position if requested
           if (seek) {
             player.seekTo(currentTime, true);
             if (isPlaying) {
@@ -763,20 +737,13 @@
         }
       };
       
-      // Add event listeners
       progressBarContainer.addEventListener('mousedown', handleDown);
-      progressBarContainer.addEventListener('mousemove', handleMove);
+      document.addEventListener('mousemove', handleMove);
       document.addEventListener('mouseup', handleUp);
       
       progressBarContainer.addEventListener('touchstart', handleDown);
-      progressBarContainer.addEventListener('touchmove', handleMove);
+      document.addEventListener('touchmove', handleMove);
       document.addEventListener('touchend', handleUp);
-      
-      // Click to seek
-      progressBarContainer.addEventListener('click', (e) => {
-        if (isDragging) return;
-        updateProgress(e, true);
-      });
     }
     
     function togglePlayWithAnimation() {
@@ -794,13 +761,11 @@
       
       togglePlay();
       
-      // Update play button in controls
       if (playBtn) {
         playBtn.textContent = isPlaying ? '❚❚' : '▶';
       }
     }
     
-    // Player control functions
     function togglePlay() {
       if (!player) return;
       
@@ -814,7 +779,6 @@
     function playNextVideo() {
       if (searchResults.length === 0) return;
       
-      // Don't play the same song again if we're at the end of the list
       if (currentVideoIndex === searchResults.length - 1) {
         return;
       }
@@ -832,7 +796,6 @@
     function playPreviousVideo() {
       if (searchResults.length === 0) return;
       
-      // Don't play the same song again if we're at the start of the list
       if (currentVideoIndex === 0) {
         return;
       }
@@ -848,23 +811,19 @@
     }
     
     function toggleShuffle() {
-      // Shuffle functionality would go here
       console.log('Shuffle toggled');
     }
     
     function toggleRepeat() {
-      // Repeat functionality would go here
       console.log('Repeat toggled');
     }
     
-    // Progress tracking
     function startProgressTracking() {
       clearInterval(progressInterval);
       
       const progressBar = document.getElementById('progressBar');
       const timeDisplay = document.getElementById('timeDisplay');
       
-      // Update progress bar periodically
       progressInterval = setInterval(() => {
         if (player && player.getCurrentTime && !isDraggingProgress) {
           const currentTime = player.getCurrentTime();
@@ -882,7 +841,6 @@
       }, 1000);
     }
     
-    // Touch events for swipe navigation
     function handleTouchStart(e) {
       touchStartY = e.touches[0].clientY;
     }
@@ -893,13 +851,10 @@
       const touchEndY = e.changedTouches[0].clientY;
       const diffY = touchStartY - touchEndY;
       
-      // Minimum swipe distance
       if (Math.abs(diffY) > 50) {
         if (diffY > 0) {
-          // Swipe up - next song
           playNextVideo();
         } else {
-          // Swipe down - previous song
           playPreviousVideo();
         }
       }
@@ -907,7 +862,6 @@
       touchStartY = 0;
     }
     
-    // Helper functions
     function formatTime(seconds) {
       if (isNaN(seconds)) return "0:00";
       const mins = Math.floor(seconds / 60);
