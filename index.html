@@ -314,14 +314,17 @@
     /* Tap to play/pause overlay */
     .tap-overlay {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200px;
+      height: 200px;
+      border-radius: 50%;
       z-index: 3;
       display: flex;
       justify-content: center;
       align-items: center;
+      pointer-events: auto;
     }
     
     .tap-icon {
@@ -654,7 +657,8 @@
       
       const tapOverlay = document.getElementById('tapOverlay');
       if (tapOverlay) {
-        tapOverlay.addEventListener('click', function() {
+        tapOverlay.addEventListener('click', function(e) {
+          e.stopPropagation();
           togglePlayWithAnimation();
         });
       }
@@ -680,6 +684,7 @@
       let isDragging = false;
       
       const handleDown = (e) => {
+        e.stopPropagation();
         // Only start dragging if clicking on the handle
         if (e.target === progressHandle) {
           isDragging = true;
@@ -691,11 +696,13 @@
       
       const handleMove = (e) => {
         if (!isDragging) return;
+        e.stopPropagation();
         updateProgress(e);
       };
       
       const handleUp = (e) => {
         if (!isDragging) return;
+        e.stopPropagation();
         isDragging = false;
         isDraggingProgress = false;
         progressHandle.classList.remove('dragging');
