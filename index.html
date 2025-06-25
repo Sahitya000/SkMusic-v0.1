@@ -784,4 +784,589 @@
     }
     
     function handleSearchInput(e) {
-      c
+      clearTimeout(searchDebounceTimer);
+      const query = e.target.value.trim();
+      
+      if (query.length > 2) {
+        searchDebounceTimer = setTimeout(() => {
+          searchYouTube(query);
+        }, 500);
+      } else {
+        searchResultsDiv.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Type at least 3 characters to search</div>';
+      }
+    }
+    
+    function handleSearchKeyPress(e) {
+      if (e.key === 'Enter') {
+        const query = searchInput.value.trim();
+        if (query) {
+          searchYouTube(query);
+        }
+      }
+    }
+    
+    function switchTab(tab) {
+      document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      event.currentTarget.classList.add('active');
+      
+      // Hide all content sections
+      homeContent.style.display = 'none';
+      libraryContent.style.display = 'none';
+      settingsContent.style.display = 'none';
+      playerSection.style.display = 'none';
+      likeContainer.style.display = 'none';
+      searchModal.style.display = 'none';
+      
+      // Show the selected tab content
+      if (tab === 'home') {
+        homeContent.style.display = 'block';
+      } else if (tab === 'search') {
+        openSearch();
+      } else if (tab === 'library') {
+        libraryContent.style.display = 'block';
+        updateFavoritesDisplay();
+      } else if (tab === 'settings') {
+        settingsContent.style.display = 'block';
+      }
+    }
+    
+    function openSearch() {
+      searchModal.style.display = 'block';
+      searchInput.focus();
+    }
+    
+    function closeSearch() {
+      searchModal.style.display = 'none';
+      searchInput.value = '';
+      searchResultsDiv.innerHTML = '';
+    }
+    
+    function searchYouTube(query) {
+      showLoader();
+      searchResultsDiv.innerHTML = '';
+      searchResults = [];
+      
+      fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=10&q=${encodeURIComponent(query + ' music')}&type=video&key=${API_KEY}`)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.json();
+        })
+        .then(data => {
+          hideLoader();
+          if (data.items && data.items.length > 0) {
+            searchResults = data.items;
+            displaySearchResults(data.items);
+          } else {
+            searchResultsDiv.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">No results found</div>';
+          }
+        })
+        .catch(error => {
+          hideLoader();
+          console.error('Error fetching data:', error);
+          searchResultsDiv.innerHTML = '<div style="color: var(--text-secondary); text-align: center; padding: 20px;">Error loading results. Please try again.</div>';
+        });
+    }
+    
+    function displaySearchResults(items) {
+      searchResultsDiv.innerHTML = '';
+      
+      items.forEach((item, index) => {
+        const videoId = item.id.videoId;
+        const title = item.snippet.title;
+        const channel = item.snippet.channelTitle;
+        const thumbnail = item.snippet.thumbnails?.medium?.url || item.snippet.thumbnails?.default?.url;
+        
+        const resultItem = document.createElement('div');
+        resultItem.className = 'search-result-item';
+        resultItem.onclick = () => {
+          currentVideoIndex = index;
+          playVideo(videoId, title, channel, thumbnail);
+        };
+        
+        resultItem.innerHTML = `
+          <img src="${thumbnail}" class="search-result-thumbnail">
+          <div class="search-result-info">
+            <div class="search-result-title">${title}</div>
+            <div class="search-result-channel">${channel}</div>
+          </div>
+        `;
+        
+        searchResultsDiv.appendChild(resultItem);
+      });
+    }
+    
+    function playVideo(videoId, title, artist, thumbnail) {
+      // If this song is from recent/favorites but not in current search results,
+      // create a temporary search result item
+      const isFromSearch = searchResults.some(item => item.id.videoId === videoId);
+      if (!isFromSearch) {
+        searchResults = [{
+          id: { videoId: videoId },
+          snippet: {
+            title: title,
+            channelTitle: artist,
+            thumbnails: {
+              default: { url: thumbnail },
+              medium: { url: thumbnail }
+            }
+          }
+        }];
+        currentVideoIndex = 0;
+      }
+      
+      if (lastPlayedIndex === currentVideoIndex && currentVideoId === videoId) {
+        return;
+      }
+      
+      currentVideoId = videoId;
+      lastPlayedIndex = currentVideoIndex;
+      
+      // Add to recent songs if not already there
+      addToRecentSongs({
+        videoId,
+        title,
+        artist,
+        thumbnail
+      });
+      
+      // Update the player section
+      songBg.style.backgroundImage = `url(${thumbnail})`;
+      songThumbnail.src = thumbnail;
+      nowPlayingTitle.textContent = title;
+      nowPlayingArtist.textContent = artist;
+      
+      // Activate background and thumbnail
+      songBg.classList.add('active');
+      songThumbnail.classList.add('active');
+      
+      // Hide all content sections and show player
+      homeContent.style.display = 'none';
+      libraryContent.style.display = 'none';
+      settingsContent.style.display = 'none';
+      searchModal.style.display = 'none';
+      
+      // Activate player section
+      playerSection.classList.add('active');
+      playerSection.style.display = 'flex';
+      
+      // Show like button
+      likeContainer.style.display = 'flex';
+      
+      // Update like button
+      updateLikeButton();
+      
+      // Initialize YouTube player if not already done
+      if (typeof YT === 'undefined' || typeof YT.Player === 'undefined') {
+        loadYouTubeAPI();
+        // Wait for API to load
+        const checkReady = setInterval(() => {
+          if (typeof YT !== 'undefined' && typeof YT.Player !== 'undefined') {
+            clearInterval(checkReady);
+            initAndPlayVideo(videoId);
+          }
+        }, 100);
+      } else {
+        initAndPlayVideo(videoId);
+      }
+      
+      setupProgressBarDrag();
+    }
+    
+    function initAndPlayVideo(videoId) {
+      if (!player) {
+        player = new YT.Player('youtube-player', {
+          height: '0',
+          width: '0',
+          videoId: videoId,
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange
+          }
+        });
+      } else {
+        player.loadVideoById(videoId);
+        if (isPlaying) {
+          player.playVideo();
+        }
+      }
+    }
+    
+    function updateLikeButton() {
+      const isFavorite = favoriteSongs.some(song => song.videoId === currentVideoId);
+      likeBtn.innerHTML = isFavorite ? '❤️' : '🤍';
+      likeBtn.classList.toggle('active', isFavorite);
+    }
+    
+    function addToRecentSongs(song) {
+      // Remove if already exists
+      recentSongs = recentSongs.filter(s => s.videoId !== song.videoId);
+      
+      // Add to beginning
+      recentSongs.unshift(song);
+      
+      // Keep only the last 10 songs
+      if (recentSongs.length > 10) {
+        recentSongs = recentSongs.slice(0, 10);
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('recentSongs', JSON.stringify(recentSongs));
+      
+      // Update the display
+      updateRecentSongsDisplay();
+    }
+    
+    function updateRecentSongsDisplay() {
+      recentSongsDiv.innerHTML = '';
+      
+      if (recentSongs.length === 0) {
+        recentSongsDiv.innerHTML = '<div style="color: var(--text-secondary); grid-column: span 2; text-align: center;">No recently played songs</div>';
+        return;
+      }
+      
+      recentSongs.forEach(song => {
+        const songCard = document.createElement('div');
+        songCard.className = 'song-card';
+        songCard.onclick = () => {
+          // Update searchResults to include this song if it's not already there
+          const existsInSearch = searchResults.some(item => item.id.videoId === song.videoId);
+          if (!existsInSearch) {
+            searchResults = [{
+              id: { videoId: song.videoId },
+              snippet: {
+                title: song.title,
+                channelTitle: song.artist,
+                thumbnails: {
+                  default: { url: song.thumbnail },
+                  medium: { url: song.thumbnail }
+                }
+              }
+            }, ...searchResults];
+          }
+          
+          // Find the index in searchResults
+          currentVideoIndex = searchResults.findIndex(item => item.id.videoId === song.videoId);
+          playVideo(song.videoId, song.title, song.artist, song.thumbnail);
+        };
+        
+        songCard.innerHTML = `
+          <img src="${song.thumbnail}" class="song-card-thumbnail">
+          <div class="song-card-info">
+            <div class="song-card-title">${song.title}</div>
+            <div class="song-card-artist">${song.artist}</div>
+          </div>
+        `;
+        
+        recentSongsDiv.appendChild(songCard);
+      });
+    }
+    
+    function toggleFavorite() {
+      const videoId = currentVideoId;
+      const currentSong = {
+        videoId,
+        title: nowPlayingTitle.textContent,
+        artist: nowPlayingArtist.textContent,
+        thumbnail: songThumbnail.src
+      };
+      
+      // Check if already a favorite
+      const existingIndex = favoriteSongs.findIndex(song => song.videoId === videoId);
+      
+      if (existingIndex >= 0) {
+        // Remove from favorites
+        favoriteSongs.splice(existingIndex, 1);
+        likeBtn.innerHTML = '🤍';
+        likeBtn.classList.remove('active');
+      } else {
+        // Add to favorites
+        favoriteSongs.push(currentSong);
+        likeBtn.innerHTML = '❤️';
+        likeBtn.classList.add('active');
+        
+        // Animation effect
+        likeBtn.style.transform = 'scale(1.2)';
+        setTimeout(() => {
+          likeBtn.style.transform = 'scale(1)';
+        }, 200);
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('favoriteSongs', JSON.stringify(favoriteSongs));
+      
+      // Update favorites display if we're on that tab
+      if (libraryContent.style.display === 'block') {
+        updateFavoritesDisplay();
+      }
+    }
+    
+    function updateFavoritesDisplay() {
+      favoritesList.innerHTML = '';
+      
+      if (favoriteSongs.length === 0) {
+        favoritesList.innerHTML = '<div style="color: var(--text-secondary); grid-column: span 2; text-align: center;">No favorite songs yet</div>';
+        return;
+      }
+      
+      favoriteSongs.forEach(song => {
+        const songCard = document.createElement('div');
+        songCard.className = 'song-card';
+        songCard.onclick = () => {
+          // Update searchResults to include this song if it's not already there
+          const existsInSearch = searchResults.some(item => item.id.videoId === song.videoId);
+          if (!existsInSearch) {
+            searchResults = [{
+              id: { videoId: song.videoId },
+              snippet: {
+                title: song.title,
+                channelTitle: song.artist,
+                thumbnails: {
+                  default: { url: song.thumbnail },
+                  medium: { url: song.thumbnail }
+                }
+              }
+            }, ...searchResults];
+          }
+          
+          // Find the index in searchResults
+          currentVideoIndex = searchResults.findIndex(item => item.id.videoId === song.videoId);
+          playVideo(song.videoId, song.title, song.artist, song.thumbnail);
+        };
+        
+        songCard.innerHTML = `
+          <img src="${song.thumbnail}" class="song-card-thumbnail">
+          <div class="song-card-info">
+            <div class="song-card-title">${song.title}</div>
+            <div class="song-card-artist">${song.artist}</div>
+          </div>
+        `;
+        
+        favoritesList.appendChild(songCard);
+      });
+    }
+    
+    function setupProgressBarDrag() {
+      const progressBarContainer = document.getElementById('progressBarContainer');
+      const progressBar = document.getElementById('progressBar');
+      const progressHandle = document.getElementById('progressHandle');
+      const timeDisplay = document.getElementById('timeDisplay');
+      
+      if (!progressBarContainer || !progressBar || !progressHandle) return;
+      
+      let isDragging = false;
+      
+      const handleDown = (e) => {
+        e.stopPropagation();
+        // Only start dragging if clicking on the handle
+        if (e.target === progressHandle) {
+          isDragging = true;
+          isDraggingProgress = true;
+          progressHandle.classList.add('dragging');
+        }
+        updateProgress(e, true); // Seek immediately on click
+      };
+      
+      const handleMove = (e) => {
+        if (!isDragging) return;
+        e.stopPropagation();
+        updateProgress(e);
+      };
+      
+      const handleUp = (e) => {
+        if (!isDragging) return;
+        e.stopPropagation();
+        isDragging = false;
+        isDraggingProgress = false;
+        progressHandle.classList.remove('dragging');
+        updateProgress(e, true);
+      };
+      
+      const updateProgress = (e, seek = false) => {
+        const rect = progressBarContainer.getBoundingClientRect();
+        let position;
+        
+        if (e.type.includes('touch')) {
+          position = e.touches[0].clientX - rect.left;
+        } else {
+          position = e.clientX - rect.left;
+        }
+        
+        let percent = position / rect.width;
+        percent = Math.max(0, Math.min(1, percent));
+        
+        progressBar.style.width = `${percent * 100}%`;
+        
+        if (player && player.getDuration) {
+          const duration = player.getDuration();
+          const currentTime = duration * percent;
+          
+          if (timeDisplay) {
+            timeDisplay.innerHTML = `
+              <span>${formatTime(currentTime)}</span>
+              <span>${formatTime(duration)}</span>
+            `;
+          }
+          
+          if (seek) {
+            player.seekTo(currentTime, true);
+            if (isPlaying) {
+              player.playVideo();
+            }
+          }
+        }
+      };
+      
+      progressBarContainer.addEventListener('mousedown', handleDown);
+      document.addEventListener('mousemove', handleMove);
+      document.addEventListener('mouseup', handleUp);
+      
+      progressBarContainer.addEventListener('touchstart', handleDown);
+      document.addEventListener('touchmove', handleMove);
+      document.addEventListener('touchend', handleUp);
+    }
+    
+    function togglePlayWithAnimation() {
+      tapIcon.textContent = isPlaying ? '▶' : '❚❚';
+      tapIcon.classList.add('show-tap-icon');
+      
+      setTimeout(() => {
+        tapIcon.classList.remove('show-tap-icon');
+      }, 300);
+      
+      togglePlay();
+      
+      const playBtn = document.getElementById('playBtn');
+      if (playBtn) {
+        playBtn.textContent = isPlaying ? '❚❚' : '▶';
+      }
+    }
+    
+    function togglePlay() {
+      if (!player) return;
+      
+      if (isPlaying) {
+        player.pauseVideo();
+      } else {
+        player.playVideo();
+      }
+    }
+    
+    function playNextVideo() {
+      if (searchResults.length === 0) return;
+      
+      let nextIndex;
+      if (isShuffleOn) {
+        nextIndex = Math.floor(Math.random() * searchResults.length);
+      } else {
+        nextIndex = (currentVideoIndex + 1) % searchResults.length;
+      }
+      
+      const nextVideo = searchResults[nextIndex];
+      if (!nextVideo) return;
+      
+      currentVideoIndex = nextIndex;
+      playVideo(
+        nextVideo.id.videoId,
+        nextVideo.snippet.title,
+        nextVideo.snippet.channelTitle,
+        nextVideo.snippet.thumbnails?.medium?.url || nextVideo.snippet.thumbnails?.default?.url
+      );
+    }
+    
+    function playPreviousVideo() {
+      if (searchResults.length === 0) return;
+      
+      let prevIndex;
+      if (isShuffleOn) {
+        prevIndex = Math.floor(Math.random() * searchResults.length);
+      } else {
+        prevIndex = (currentVideoIndex - 1 + searchResults.length) % searchResults.length;
+      }
+      
+      const prevVideo = searchResults[prevIndex];
+      if (!prevVideo) return;
+      
+      currentVideoIndex = prevIndex;
+      playVideo(
+        prevVideo.id.videoId,
+        prevVideo.snippet.title,
+        prevVideo.snippet.channelTitle,
+        prevVideo.snippet.thumbnails?.medium?.url || prevVideo.snippet.thumbnails?.default?.url
+      );
+    }
+    
+    function toggleShuffle() {
+      isShuffleOn = !isShuffleOn;
+      console.log('Shuffle:', isShuffleOn ? 'ON' : 'OFF');
+    }
+    
+    function toggleRepeat() {
+      isRepeatOn = !isRepeatOn;
+      console.log('Repeat:', isRepeatOn ? 'ON' : 'OFF');
+    }
+    
+    function startProgressTracking() {
+      clearInterval(progressInterval);
+      
+      const progressBar = document.getElementById('progressBar');
+      const timeDisplay = document.getElementById('timeDisplay');
+      
+      progressInterval = setInterval(() => {
+        if (player && player.getCurrentTime && !isDraggingProgress) {
+          const currentTime = player.getCurrentTime();
+          const duration = player.getDuration();
+          const progressPercent = (currentTime / duration) * 100;
+          
+          if (progressBar) progressBar.style.width = `${progressPercent}%`;
+          if (timeDisplay) {
+            timeDisplay.innerHTML = `
+              <span>${formatTime(currentTime)}</span>
+              <span>${formatTime(duration)}</span>
+            `;
+          }
+        }
+      }, 1000);
+    }
+    
+    function handleTouchStart(e) {
+      touchStartY = e.touches[0].clientY;
+    }
+    
+    function handleTouchEnd(e) {
+      if (!touchStartY) return;
+      
+      const touchEndY = e.changedTouches[0].clientY;
+      const diffY = touchStartY - touchEndY;
+      
+      if (Math.abs(diffY) > 50) {
+        if (diffY > 0) {
+          playNextVideo();
+        } else {
+          playPreviousVideo();
+        }
+      }
+      
+      touchStartY = 0;
+    }
+    
+    function formatTime(seconds) {
+      if (isNaN(seconds)) return "0:00";
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
+    
+    function showLoader() {
+      loader.style.display = 'block';
+    }
+    
+    function hideLoader() {
+      loader.style.display = 'none';
+    }
+  </script>
+</body>
+</html>
