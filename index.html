@@ -98,6 +98,43 @@
       display: flex;
     }
     
+    .song-bg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      filter: blur(20px) brightness(0.6);
+      z-index: 0;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    
+    .song-bg.active {
+      opacity: 1;
+    }
+    
+    .song-thumbnail {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 250px;
+      height: 250px;
+      border-radius: 10px;
+      object-fit: cover;
+      z-index: 2;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    
+    .song-thumbnail.active {
+      opacity: 1;
+    }
+    
     .overlay {
       position: absolute;
       top: 0; left: 0; right: 0; bottom: 0;
@@ -109,6 +146,7 @@
       position: relative;
       z-index: 2;
       margin-bottom: 30px;
+      text-align: center;
     }
     
     .song-title {
@@ -319,20 +357,18 @@
     /* Tap to play/pause overlay */
     .tap-overlay {
       position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 200px;
-      height: 200px;
-      border-radius: 50%;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       z-index: 3;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      pointer-events: auto;
     }
     
     .tap-icon {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
       font-size: 80px;
       opacity: 0;
       transition: opacity 0.3s;
@@ -480,6 +516,11 @@
       padding: 40px 20px;
       color: var(--text-secondary);
     }
+    
+    /* Background audio player */
+    .background-player {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -510,7 +551,12 @@
     
     <!-- Player section (hidden by default) -->
     <div class="song" id="playerSection">
+      <div class="song-bg" id="songBg"></div>
+      <img class="song-thumbnail" id="songThumbnail">
       <div class="overlay"></div>
+      <div class="tap-overlay" id="tapOverlay">
+        <div class="tap-icon" id="tapIcon">❚❚</div>
+      </div>
       
       <div class="song-info">
         <h1 class="song-title" id="nowPlayingTitle">Song Title</h1>
@@ -530,11 +576,11 @@
         </div>
         
         <div class="controls">
-          <button class="control-btn">🔀</button>
+          <button class="control-btn" onclick="toggleShuffle()">🔀</button>
           <button class="control-btn" onclick="playPreviousVideo()">⏮</button>
           <button class="play-btn" id="playBtn" onclick="togglePlay()">▶</button>
           <button class="control-btn" onclick="playNextVideo()">⏭</button>
-          <button class="control-btn">🔁</button>
+          <button class="control-btn" onclick="toggleRepeat()">🔁</button>
         </div>
       </div>
     </div>
@@ -592,6 +638,9 @@
 
   <!-- YouTube IFrame Player -->
   <div id="youtube-player"></div>
+  
+  <!-- Background Audio Player -->
+  <audio id="backgroundAudio" class="background-player" loop></audio>
 
   <script>
     // Replace with your actual YouTube API key
@@ -608,6 +657,9 @@
     let lastPlayedIndex = -1;
     let recentSongs = JSON.parse(localStorage.getItem('recentSongs')) || [];
     let favoriteSongs = JSON.parse(localStorage.getItem('favoriteSongs')) || [];
+    let isShuffleOn = false;
+    let isRepeatOn = false;
+    let backgroundAudio = document.getElementById('backgroundAudio');
     
     // DOM Elements
     const searchModal = document.getElementById('searchModal');
@@ -626,6 +678,10 @@
     const nowPlayingTitle = document.getElementById('nowPlayingTitle');
     const nowPlayingArtist = document.getElementById('nowPlayingArtist');
     const likeContainer = document.getElementById('likeContainer');
+    const songBg = document.getElementById('songBg');
+    const songThumbnail = document.getElementById('songThumbnail');
+    const tapOverlay = document.getElementById('tapOverlay');
+    const tapIcon = document.getElementById('tapIcon');
     
     // Initialize the app when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
@@ -636,7 +692,22 @@
       searchInput.addEventListener('keypress', handleSearchKeyPress);
       updateRecentSongsDisplay();
       updateFavoritesDisplay();
+      
+      // Setup tap to play/pause
+      tapOverlay.addEventListener('click', function(e) {
+        togglePlayWithAnimation();
+      });
+      
+      // Start background music
+      playBackgroundMusic();
     });
+    
+    function playBackgroundMusic() {
+      // You can replace this with your background music URL
+      backgroundAudio.src = 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3';
+      backgroundAudio.volume = 0.3; // Lower volume for background music
+      backgroundAudio.play().catch(e => console.log('Background audio play failed:', e));
+    }
     
     function loadYouTubeAPI() {
       const tag = document.createElement('script');
@@ -684,7 +755,11 @@
           isPlaying = false;
           if (playBtn) playBtn.textContent = '▶';
           clearInterval(progressInterval);
-          playNextVideo();
+          if (isRepeatOn) {
+            player.playVideo();
+          } else {
+            playNextVideo();
+          }
           break;
       }
       
@@ -832,9 +907,14 @@
       });
       
       // Update the player section
-      playerSection.style.backgroundImage = `url(${thumbnail})`;
+      songBg.style.backgroundImage = `url(${thumbnail})`;
+      songThumbnail.src = thumbnail;
       nowPlayingTitle.textContent = title;
       nowPlayingArtist.textContent = artist;
+      
+      // Activate background and thumbnail
+      songBg.classList.add('active');
+      songThumbnail.classList.add('active');
       
       // Hide all content sections and show player
       homeContent.style.display = 'none';
@@ -925,6 +1005,11 @@
         const songCard = document.createElement('div');
         songCard.className = 'song-card';
         songCard.onclick = () => {
+          // Find the song in search results if available
+          const index = searchResults.findIndex(item => item.id.videoId === song.videoId);
+          if (index >= 0) {
+            currentVideoIndex = index;
+          }
           playVideo(song.videoId, song.title, song.artist, song.thumbnail);
         };
         
@@ -946,7 +1031,7 @@
         videoId,
         title: nowPlayingTitle.textContent,
         artist: nowPlayingArtist.textContent,
-        thumbnail: playerSection.style.backgroundImage.replace('url("', '').replace('")', '')
+        thumbnail: songThumbnail.src
       };
       
       // Check if already a favorite
@@ -991,6 +1076,11 @@
         const songCard = document.createElement('div');
         songCard.className = 'song-card';
         songCard.onclick = () => {
+          // Find the song in search results if available
+          const index = searchResults.findIndex(item => item.id.videoId === song.videoId);
+          if (index >= 0) {
+            currentVideoIndex = index;
+          }
           playVideo(song.videoId, song.title, song.artist, song.thumbnail);
         };
         
@@ -1086,6 +1176,22 @@
       document.addEventListener('touchend', handleUp);
     }
     
+    function togglePlayWithAnimation() {
+      tapIcon.textContent = isPlaying ? '▶' : '❚❚';
+      tapIcon.classList.add('show-tap-icon');
+      
+      setTimeout(() => {
+        tapIcon.classList.remove('show-tap-icon');
+      }, 300);
+      
+      togglePlay();
+      
+      const playBtn = document.getElementById('playBtn');
+      if (playBtn) {
+        playBtn.textContent = isPlaying ? '❚❚' : '▶';
+      }
+    }
+    
     function togglePlay() {
       if (!player) return;
       
@@ -1099,12 +1205,15 @@
     function playNextVideo() {
       if (searchResults.length === 0) return;
       
-      if (currentVideoIndex === searchResults.length - 1) {
-        return;
+      let nextIndex;
+      if (isShuffleOn) {
+        nextIndex = Math.floor(Math.random() * searchResults.length);
+      } else {
+        nextIndex = (currentVideoIndex + 1) % searchResults.length;
       }
       
-      currentVideoIndex = (currentVideoIndex + 1) % searchResults.length;
-      const nextVideo = searchResults[currentVideoIndex];
+      const nextVideo = searchResults[nextIndex];
+      currentVideoIndex = nextIndex;
       playVideo(
         nextVideo.id.videoId,
         nextVideo.snippet.title,
@@ -1116,18 +1225,31 @@
     function playPreviousVideo() {
       if (searchResults.length === 0) return;
       
-      if (currentVideoIndex === 0) {
-        return;
+      let prevIndex;
+      if (isShuffleOn) {
+        prevIndex = Math.floor(Math.random() * searchResults.length);
+      } else {
+        prevIndex = (currentVideoIndex - 1 + searchResults.length) % searchResults.length;
       }
       
-      currentVideoIndex = (currentVideoIndex - 1 + searchResults.length) % searchResults.length;
-      const prevVideo = searchResults[currentVideoIndex];
+      const prevVideo = searchResults[prevIndex];
+      currentVideoIndex = prevIndex;
       playVideo(
         prevVideo.id.videoId,
         prevVideo.snippet.title,
         prevVideo.snippet.channelTitle,
         prevVideo.snippet.thumbnails?.medium?.url || prevVideo.snippet.thumbnails?.default?.url
       );
+    }
+    
+    function toggleShuffle() {
+      isShuffleOn = !isShuffleOn;
+      console.log('Shuffle:', isShuffleOn ? 'ON' : 'OFF');
+    }
+    
+    function toggleRepeat() {
+      isRepeatOn = !isRepeatOn;
+      console.log('Repeat:', isRepeatOn ? 'ON' : 'OFF');
     }
     
     function startProgressTracking() {
