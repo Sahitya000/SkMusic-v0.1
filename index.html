@@ -345,6 +345,107 @@
       opacity: 1;
       transform: translateY(-50%) scale(1.2);
     }
+    
+    /* Home screen content */
+    .home-content {
+      padding: 20px;
+    }
+    
+    .section-title {
+      font-size: 20px;
+      margin-bottom: 15px;
+      color: var(--text);
+    }
+    
+    .recent-songs {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+      margin-bottom: 30px;
+    }
+    
+    .song-card {
+      background: var(--light-dark);
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    
+    .song-card:hover {
+      transform: scale(1.02);
+    }
+    
+    .song-card-thumbnail {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+    }
+    
+    .song-card-info {
+      padding: 10px;
+    }
+    
+    .song-card-title {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .song-card-artist {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+    
+    .favorite-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 20px;
+      cursor: pointer;
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      z-index: 10;
+    }
+    
+    .favorite-btn.active {
+      color: var(--primary);
+    }
+    
+    /* Library/Favorites screen */
+    .library-content {
+      padding: 20px;
+    }
+    
+    .favorites-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+    
+    /* Settings screen */
+    .settings-content {
+      padding: 20px;
+    }
+    
+    .settings-item {
+      padding: 15px 0;
+      border-bottom: 1px solid var(--secondary);
+    }
+    
+    .settings-title {
+      font-size: 16px;
+      margin-bottom: 5px;
+    }
+    
+    .settings-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
   </style>
 </head>
 <body>
@@ -360,33 +461,66 @@
   <div class="loader" id="loader"></div>
 
   <div class="container" id="results">
-    <!-- Default content will be replaced by search results -->
-    <div class="song" style="background-image: url('https://i.ytimg.com/vi/JGwWNGJdvx8/maxresdefault.jpg')">
-      <div class="overlay"></div>
-      
-      <div class="song-info">
-        <h1 class="song-title">Welcome to Music Player</h1>
-        <p class="song-artist">Search for music to begin</p>
+    <!-- Home content will be shown by default -->
+    <div class="home-content" id="homeContent">
+      <h2 class="section-title">Recently Played</h2>
+      <div class="recent-songs" id="recentSongs">
+        <!-- Recent songs will be added here -->
       </div>
       
-      <div class="player-controls">
-        <div class="progress-container">
-          <div class="progress-bar">
-            <div class="progress"></div>
-          </div>
-          <div class="time">
-            <span>0:00</span>
-            <span>0:00</span>
-          </div>
+      <h2 class="section-title">Get Started</h2>
+      <div class="song" style="background-image: url('https://i.ytimg.com/vi/JGwWNGJdvx8/maxresdefault.jpg')">
+        <div class="overlay"></div>
+        
+        <div class="song-info">
+          <h1 class="song-title">Welcome to Music Player</h1>
+          <p class="song-artist">Search for music to begin</p>
         </div>
         
-        <div class="controls">
-          <button class="control-btn">🔀</button>
-          <button class="control-btn">⏮</button>
-          <button class="play-btn">▶</button>
-          <button class="control-btn">⏭</button>
-          <button class="control-btn">🔁</button>
+        <div class="player-controls">
+          <div class="progress-container">
+            <div class="progress-bar">
+              <div class="progress"></div>
+            </div>
+            <div class="time">
+              <span>0:00</span>
+              <span>0:00</span>
+            </div>
+          </div>
+          
+          <div class="controls">
+            <button class="control-btn">🔀</button>
+            <button class="control-btn">⏮</button>
+            <button class="play-btn">▶</button>
+            <button class="control-btn">⏭</button>
+            <button class="control-btn">🔁</button>
+          </div>
         </div>
+      </div>
+    </div>
+    
+    <!-- Library content (hidden by default) -->
+    <div class="library-content" id="libraryContent" style="display: none;">
+      <h2 class="section-title">Your Favorites</h2>
+      <div class="favorites-list" id="favoritesList">
+        <!-- Favorite songs will be added here -->
+      </div>
+    </div>
+    
+    <!-- Settings content (hidden by default) -->
+    <div class="settings-content" id="settingsContent" style="display: none;">
+      <h2 class="section-title">Settings</h2>
+      <div class="settings-item">
+        <div class="settings-title">Account</div>
+        <div class="settings-desc">Manage your account settings</div>
+      </div>
+      <div class="settings-item">
+        <div class="settings-title">Playback</div>
+        <div class="settings-desc">Audio quality and playback settings</div>
+      </div>
+      <div class="settings-item">
+        <div class="settings-title">About</div>
+        <div class="settings-desc">Version 1.0.0</div>
       </div>
     </div>
   </div>
@@ -401,8 +535,8 @@
       <div>Search</div>
     </div>
     <div class="nav-item" onclick="switchTab('library')">
-      <div class="nav-icon">📻</div>
-      <div>Library</div>
+      <div class="nav-icon">❤️</div>
+      <div>Favorites</div>
     </div>
     <div class="nav-item" onclick="switchTab('settings')">
       <div class="nav-icon">⚙️</div>
@@ -426,6 +560,8 @@
     let searchDebounceTimer;
     let isDraggingProgress = false;
     let lastPlayedIndex = -1;
+    let recentSongs = JSON.parse(localStorage.getItem('recentSongs')) || [];
+    let favoriteSongs = JSON.parse(localStorage.getItem('favoriteSongs')) || [];
     
     // DOM Elements
     const searchModal = document.getElementById('searchModal');
@@ -433,6 +569,11 @@
     const searchResultsDiv = document.getElementById('searchResults');
     const resultsContainer = document.getElementById('results');
     const loader = document.getElementById('loader');
+    const homeContent = document.getElementById('homeContent');
+    const libraryContent = document.getElementById('libraryContent');
+    const settingsContent = document.getElementById('settingsContent');
+    const recentSongsDiv = document.getElementById('recentSongs');
+    const favoritesList = document.getElementById('favoritesList');
     
     // Initialize the app when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
@@ -441,6 +582,8 @@
       document.addEventListener('touchend', handleTouchEnd, false);
       searchInput.addEventListener('input', handleSearchInput);
       searchInput.addEventListener('keypress', handleSearchKeyPress);
+      updateRecentSongsDisplay();
+      updateFavoritesDisplay();
     });
     
     function loadYouTubeAPI() {
@@ -532,8 +675,21 @@
       });
       event.currentTarget.classList.add('active');
       
-      if (tab === 'search') {
+      // Hide all content sections
+      homeContent.style.display = 'none';
+      libraryContent.style.display = 'none';
+      settingsContent.style.display = 'none';
+      
+      // Show the selected tab content
+      if (tab === 'home') {
+        homeContent.style.display = 'block';
+      } else if (tab === 'search') {
         openSearch();
+      } else if (tab === 'library') {
+        libraryContent.style.display = 'block';
+        updateFavoritesDisplay();
+      } else if (tab === 'settings') {
+        settingsContent.style.display = 'block';
       }
     }
     
@@ -612,14 +768,33 @@
       currentVideoId = videoId;
       lastPlayedIndex = currentVideoIndex;
       
+      // Add to recent songs if not already there
+      addToRecentSongs({
+        videoId,
+        title,
+        artist,
+        thumbnail
+      });
+      
+      // Clear the container and show the player
       resultsContainer.innerHTML = '';
+      homeContent.style.display = 'none';
+      libraryContent.style.display = 'none';
+      settingsContent.style.display = 'none';
       
       const songDiv = document.createElement('div');
       songDiv.className = 'song';
       songDiv.style.backgroundImage = `url(${thumbnail})`;
       
+      // Check if this song is a favorite
+      const isFavorite = favoriteSongs.some(song => song.videoId === videoId);
+      
       songDiv.innerHTML = `
         <div class="overlay"></div>
+        
+        <button class="favorite-btn ${isFavorite ? 'active' : ''}" id="favoriteBtn" onclick="toggleFavorite(event)">
+          ${isFavorite ? '❤️' : '🤍'}
+        </button>
         
         <div class="tap-overlay" id="tapOverlay">
           <div class="tap-icon" id="tapIcon">${isPlaying ? '❚❚' : '▶'}</div>
@@ -671,6 +846,115 @@
           player.playVideo();
         }
       }
+    }
+    
+    function addToRecentSongs(song) {
+      // Remove if already exists
+      recentSongs = recentSongs.filter(s => s.videoId !== song.videoId);
+      
+      // Add to beginning
+      recentSongs.unshift(song);
+      
+      // Keep only the last 10 songs
+      if (recentSongs.length > 10) {
+        recentSongs = recentSongs.slice(0, 10);
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('recentSongs', JSON.stringify(recentSongs));
+      
+      // Update the display
+      updateRecentSongsDisplay();
+    }
+    
+    function updateRecentSongsDisplay() {
+      recentSongsDiv.innerHTML = '';
+      
+      if (recentSongs.length === 0) {
+        recentSongsDiv.innerHTML = '<div style="color: var(--text-secondary); grid-column: span 2; text-align: center;">No recently played songs</div>';
+        return;
+      }
+      
+      recentSongs.forEach(song => {
+        const songCard = document.createElement('div');
+        songCard.className = 'song-card';
+        songCard.onclick = () => {
+          playVideo(song.videoId, song.title, song.artist, song.thumbnail);
+        };
+        
+        songCard.innerHTML = `
+          <img src="${song.thumbnail}" class="song-card-thumbnail">
+          <div class="song-card-info">
+            <div class="song-card-title">${song.title}</div>
+            <div class="song-card-artist">${song.artist}</div>
+          </div>
+        `;
+        
+        recentSongsDiv.appendChild(songCard);
+      });
+    }
+    
+    function toggleFavorite(event) {
+      event.stopPropagation();
+      
+      const favoriteBtn = document.getElementById('favoriteBtn');
+      const videoId = currentVideoId;
+      const currentSong = {
+        videoId,
+        title: document.querySelector('.song-title')?.textContent || '',
+        artist: document.querySelector('.song-artist')?.textContent || '',
+        thumbnail: document.querySelector('.song')?.style.backgroundImage.replace('url("', '').replace('")', '') || ''
+      };
+      
+      // Check if already a favorite
+      const existingIndex = favoriteSongs.findIndex(song => song.videoId === videoId);
+      
+      if (existingIndex >= 0) {
+        // Remove from favorites
+        favoriteSongs.splice(existingIndex, 1);
+        favoriteBtn.innerHTML = '🤍';
+        favoriteBtn.classList.remove('active');
+      } else {
+        // Add to favorites
+        favoriteSongs.push(currentSong);
+        favoriteBtn.innerHTML = '❤️';
+        favoriteBtn.classList.add('active');
+      }
+      
+      // Save to localStorage
+      localStorage.setItem('favoriteSongs', JSON.stringify(favoriteSongs));
+      
+      // Update favorites display if we're on that tab
+      if (libraryContent.style.display === 'block') {
+        updateFavoritesDisplay();
+      }
+    }
+    
+    function updateFavoritesDisplay() {
+      favoritesList.innerHTML = '';
+      
+      if (favoriteSongs.length === 0) {
+        favoritesList.innerHTML = '<div style="color: var(--text-secondary); grid-column: span 2; text-align: center;">No favorite songs yet</div>';
+        return;
+      }
+      
+      favoriteSongs.forEach(song => {
+        const songCard = document.createElement('div');
+        songCard.className = 'song-card';
+        songCard.onclick = () => {
+          playVideo(song.videoId, song.title, song.artist, song.thumbnail);
+        };
+        
+        songCard.innerHTML = `
+          <img src="${song.thumbnail}" class="song-card-thumbnail">
+          <div class="song-card-info">
+            <div class="song-card-title">${song.title}</div>
+            <div class="song-card-artist">${song.artist}</div>
+          </div>
+        `;
+        
+        favoritesList.appendChild(songCard);
+      });
     }
     
     function setupProgressBarDrag() {
