@@ -91,11 +91,11 @@
       flex-direction: column;
       justify-content: flex-end;
       padding: 20px;
-      display: none; /* Hidden by default */
+      display: none;
     }
     
     .song.active {
-      display: flex; /* Show when active */
+      display: flex;
     }
     
     .overlay {
@@ -414,6 +414,7 @@
       flex-direction: column;
       align-items: center;
       z-index: 10;
+      display: none;
     }
     
     .like-btn {
@@ -443,6 +444,7 @@
     /* Library/Favorites screen */
     .library-content {
       padding: 20px;
+      display: none;
     }
     
     .favorites-list {
@@ -454,6 +456,7 @@
     /* Settings screen */
     .settings-content {
       padding: 20px;
+      display: none;
     }
     
     .settings-item {
@@ -543,7 +546,7 @@
     </div>
     
     <!-- Library content (hidden by default) -->
-    <div class="library-content" id="libraryContent" style="display: none;">
+    <div class="library-content" id="libraryContent">
       <h2 class="section-title">Your Favorites</h2>
       <div class="favorites-list" id="favoritesList">
         <!-- Favorite songs will be added here -->
@@ -551,7 +554,7 @@
     </div>
     
     <!-- Settings content (hidden by default) -->
-    <div class="settings-content" id="settingsContent" style="display: none;">
+    <div class="settings-content" id="settingsContent">
       <h2 class="section-title">Settings</h2>
       <div class="settings-item">
         <div class="settings-title">Account</div>
@@ -622,6 +625,7 @@
     const likeCount = document.getElementById('likeCount');
     const nowPlayingTitle = document.getElementById('nowPlayingTitle');
     const nowPlayingArtist = document.getElementById('nowPlayingArtist');
+    const likeContainer = document.getElementById('likeContainer');
     
     // Initialize the app when DOM is loaded
     document.addEventListener('DOMContentLoaded', function() {
@@ -632,10 +636,6 @@
       searchInput.addEventListener('keypress', handleSearchKeyPress);
       updateRecentSongsDisplay();
       updateFavoritesDisplay();
-      
-      // Hide player and like button initially
-      playerSection.style.display = 'none';
-      document.getElementById('likeContainer').style.display = 'none';
     });
     
     function loadYouTubeAPI() {
@@ -732,7 +732,8 @@
       libraryContent.style.display = 'none';
       settingsContent.style.display = 'none';
       playerSection.style.display = 'none';
-      document.getElementById('likeContainer').style.display = 'none';
+      likeContainer.style.display = 'none';
+      searchModal.style.display = 'none';
       
       // Show the selected tab content
       if (tab === 'home') {
@@ -835,26 +836,56 @@
       nowPlayingTitle.textContent = title;
       nowPlayingArtist.textContent = artist;
       
-      // Show the player and hide other content
+      // Hide all content sections and show player
       homeContent.style.display = 'none';
       libraryContent.style.display = 'none';
       settingsContent.style.display = 'none';
+      searchModal.style.display = 'none';
+      
+      // Activate player section
+      playerSection.classList.add('active');
       playerSection.style.display = 'flex';
+      
+      // Show like button
+      likeContainer.style.display = 'flex';
       
       // Update like button
       updateLikeButton();
       
-      // Show like button
-      document.getElementById('likeContainer').style.display = 'flex';
+      // Initialize YouTube player if not already done
+      if (typeof YT === 'undefined' || typeof YT.Player === 'undefined') {
+        loadYouTubeAPI();
+        // Wait for API to load
+        const checkReady = setInterval(() => {
+          if (typeof YT !== 'undefined' && typeof YT.Player !== 'undefined') {
+            clearInterval(checkReady);
+            initAndPlayVideo(videoId);
+          }
+        }, 100);
+      } else {
+        initAndPlayVideo(videoId);
+      }
       
-      if (player) {
+      setupProgressBarDrag();
+    }
+    
+    function initAndPlayVideo(videoId) {
+      if (!player) {
+        player = new YT.Player('youtube-player', {
+          height: '0',
+          width: '0',
+          videoId: videoId,
+          events: {
+            'onReady': onPlayerReady,
+            'onStateChange': onPlayerStateChange
+          }
+        });
+      } else {
         player.loadVideoById(videoId);
         if (isPlaying) {
           player.playVideo();
         }
       }
-      
-      setupProgressBarDrag();
     }
     
     function updateLikeButton() {
